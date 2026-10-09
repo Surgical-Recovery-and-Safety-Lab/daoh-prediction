@@ -1,7 +1,7 @@
 [meta]
 project_name = "uniform"
-run_mode = "fast"
-verbose = 1
+run_mode = "cv"
+verbose = "info"
 
 [data]
 path = "/pvol/mroe734/data/NZ_data.v2.parquet"
@@ -75,7 +75,7 @@ values = [2023, 2024]
 [workflow.validation.cross_validation]
 strategy = "random"
 grid_search = false
-n_splits = 5
+n_splits = 10
 shuffle = true
 
 [workflow.evaluation.metrics]

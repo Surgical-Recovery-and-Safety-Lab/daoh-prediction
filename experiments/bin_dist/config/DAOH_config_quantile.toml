@@ -1,7 +1,7 @@
 [meta]
 project_name = "quantile"
-run_mode = "fast"
-verbose = 1
+run_mode = "cv"
+verbose = "info"
 
 [data]
 path = "/pvol/mroe734/data/NZ_data.v2.parquet"
