@@ -1,3 +1,5 @@
+import json
+import tomllib
 from pathlib import Path
 from typing import Literal
 
@@ -203,6 +205,8 @@ def generate_results(
         save_path=ordboost_pipe.run_dir / "plots/sharpness.png",
     )
 
+    generate_cv_results(ordboost_version, ngboost_version, hgbr_version, mord_version)
+
 
 def generate_experiment_results(
     experiment: Literal["n_bins", "bin_dist", "mappers"],
@@ -348,6 +352,196 @@ def generate_experiment_results(
         order=order,
         display_labels=display_labels,
         save_path=src_dir / "plots/sharpness.png",
+    )
+
+    generate_experiment_cv_results(experiment)
+
+
+def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
+    """Load the DAOH_90 cross-validation summary of an artifact.
+
+    The scores are stored as negated losses (sklearn convention), so the sign
+    is flipped to report MAE and CRPS as positive values. When the model has
+    no CRPS (e.g. mord and HGBr) the CRPS is the MAE.
+
+    Parameters
+    ----------
+    artifact_dir : str or Path
+        Artifact directory containing the CV folder (e.g. artifacts/ordboost/v1).
+
+    Returns
+    -------
+    dict[str, tuple[float, float]]
+        Metric ("mae", "crps") -> (mean, std).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the CV summary file does not exist.
+
+    """
+    path = Path(artifact_dir) / "CV" / "DAOH_90_cv_summary.json"
+    if not path.is_file():
+        msg = f"Missing CV summary: {path}"
+        raise FileNotFoundError(msg)
+
+    with open(path) as f:
+        summary = json.load(f)
+
+    results = {
+        metric: (-summary[metric]["mean"], summary[metric]["std"])
+        for metric in ("mae", "crps")
+        if metric in summary
+    }
+    results.setdefault("crps", results["mae"])
+    return results
+
+
+def generate_cv_table(results, order, display_labels, save_path):
+    """Generate the LaTeX cross-validation table (mean +/- std) and save it.
+
+    Parameters
+    ----------
+    results : dict[str, dict[str, tuple[float, float]]]
+        Model key -> metrics from `load_cv_summary`.
+    order : list[str]
+        Model keys controlling the column order.
+    display_labels : dict[str, str]
+        Model key -> LaTeX-escaped display string.
+    save_path : str or Path
+        File to save the table in.
+
+    """
+    lines = [
+        r"\begin{tabular}{" + "c" * (len(order) + 1) + "}",
+        r"\toprule",
+        r"\textbf{Metrics} & "
+        + " & ".join(rf"\textbf{{{display_labels[key]}}}" for key in order)
+        + r" \\",
+        r"\midrule",
+    ]
+
+    for row_label, metric_key in [("MAE (days)", "mae"), ("CRPS (days)", "crps")]:
+        cells = []
+        for key in order:
+            mean, std = results[key][metric_key]
+            cells.append(rf"${mean:.2f} \pm {std:.2f}$")
+        lines.append(f"{row_label} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    save_table("\n".join(lines), save_path)
+
+
+def generate_cv_results(
+    ordboost_version: str,
+    ngboost_version: str,
+    hgbr_version: str,
+    mord_version: str,
+) -> None:
+    """Generate the cross-validation table for the main models.
+
+    The table is saved in the ordboost artifact results folder.
+
+    Parameters
+    ----------
+    ordboost_version : str
+        Version of the ordboost model.
+    ngboost_version : str
+        Version of the ngboost model.
+    hgbr_version : str
+        Version of the HGBr model.
+    mord_version : str
+        Version of the mord model.
+
+    """
+    order = ["hgbr", "mord", "ngboost", "ordboost"]
+    display_labels = {
+        "ngboost": "NGBoost",
+        "ordboost": "OrdBoost",
+        "hgbr": "HGBRegressor",
+        "mord": "OrdinalRidge",
+    }
+    dirs = {
+        "hgbr": Path(f"artifacts/HGBr/{hgbr_version}"),
+        "mord": Path(f"artifacts/mord/{mord_version}"),
+        "ngboost": Path(f"artifacts/ngboost/{ngboost_version}"),
+        "ordboost": Path(f"artifacts/ordboost/{ordboost_version}"),
+    }
+    results = {model: load_cv_summary(dirs[model]) for model in order}
+
+    save_dir = dirs["ordboost"] / "results"
+    save_dir.mkdir(parents=True, exist_ok=True)
+    generate_cv_table(
+        results,
+        order=order,
+        display_labels=display_labels,
+        save_path=save_dir / "cv_table.txt",
+    )
+
+
+def generate_experiment_cv_results(
+    experiment: Literal["n_bins", "bin_dist", "mappers"],
+) -> None:
+    """Generate the cross-validation table for an experiment.
+
+    Experiments are run in sorted configuration file order (v1, v2, ...), so
+    each configuration's project name is used to find its artifact version and
+    the columns are then arranged in the experiment's display order.
+
+    Parameters
+    ----------
+    experiment : str, {"n_bins", "bin_dist", "mappers"}
+        Experiment to generate the CV table for.
+
+    Raises
+    ------
+    FileNotFoundError
+        If a configuration or its CV summary is missing.
+    ValueError
+        If the configurations do not match the experiment's display order.
+
+    """
+    src_dir = Path(f"experiments/{experiment}")
+    config_files = sorted(p for p in (src_dir / "config").glob("*.toml") if p.is_file())
+
+    # Same sorted order as main.run_experiment: i-th config -> v{i}
+    results = {}
+    for i, config_file in enumerate(config_files, start=1):
+        with open(config_file, "rb") as f:
+            name = tomllib.load(f)["meta"]["project_name"]
+        results[name] = load_cv_summary(src_dir / "artifacts" / f"v{i}")
+
+    order = {
+        "n_bins": N_BINS_EXP_ORDER,
+        "bin_dist": BIN_DIST_EXP_ORDER,
+        "mappers": MAPPERS_EXP_ORDER,
+    }[experiment]
+    if set(order) != set(results):
+        msg = f"Configuration names {sorted(results)} do not match {order}"
+        raise ValueError(msg)
+
+    display_labels = {
+        "4-bins": "4-bins",
+        "8-bins": "8-bins",
+        "12-bins": "12-bins",
+        "16-bins": "16-bins",
+        "20-bins": "20-bins",
+        "quantile": "Quantile",
+        "uniform": "Uniform",
+        "custom": "Custom",
+        "mean": "Mean",
+        "median": "Median",
+        "continuous": "Continuous",
+    }
+
+    res_path = src_dir / "results"
+    res_path.mkdir(exist_ok=True)
+    generate_cv_table(
+        results,
+        order=order,
+        display_labels=display_labels,
+        save_path=res_path / "cv_table.txt",
     )
 
 
