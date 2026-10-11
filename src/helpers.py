@@ -14,7 +14,6 @@ from ordboost.metrics import (
     pit_diagnostics,
 )
 from scores.probability import PitFcstAtObs, crps_cdf
-
 from src.bootstrap import (
     BOOTSTRAP_SEED,
     N_BOOT,
@@ -76,76 +75,6 @@ def sample_crps(y_true, dist) -> np.ndarray:
     obs = xr.DataArray(y_true_arr, dims=["sample"])
     result = crps_cdf(fcst, obs, threshold_dim="threshold", preserve_dims=["sample"])
     return result.total.values
-
-
-def compute_metrics(
-    y_true,
-    y_pred,
-    dist,
-    y_train,
-    n_boot: int = N_BOOT,
-    seed: int = BOOTSTRAP_SEED,
-):
-    """Compute the MAE, MAESS, CRPS and CRPSS for one model, with 95% CIs.
-
-    The skill scores are computed relative to a baseline: the median of
-    `y_true` for the MAE, and the baseline distribution built from `y_train`
-    for the CRPS. If the model has no predictive distribution, the CRPS and
-    CRPSS fall back to the MAE and MAESS. The per-sample errors are computed
-    once, and the confidence intervals are percentile intervals over
-    bootstrap resamples of the test samples.
-
-    Parameters
-    ----------
-    y_true : array-like of shape (n_samples,)
-        True target values.
-    y_pred : array-like of shape (n_samples,)
-        Point predictions.
-    dist : NGBoostDistAdapter or ContinuousPredictiveDistribution or None
-        Predictive distributions. If None, only point metrics are used.
-    y_train : array-like of shape (n_train_samples,)
-        Training targets used to build the baseline distribution.
-    n_boot : int, default=1000
-        Number of bootstrap iterations.
-    seed : int, default=42
-        Seed of the bootstrap random generator. The same seed gives the same
-        resamples for every model.
-
-    Returns
-    -------
-    dict[str, tuple[float, float, float]]
-        Dictionary with keys "mae", "maess", "crps" and "crpss". Each value
-        is a tuple (estimate, lower, upper) with the estimate computed on
-        the full sample.
-
-    """
-    y_true_arr = np.asarray(y_true, dtype=float).ravel()
-    abs_err = np.abs(y_true_arr - np.asarray(y_pred, dtype=float).ravel())
-
-    if dist is not None:
-        crps_i = sample_crps(y_true_arr, dist)
-        baseline = baseline_distribution(y_train, len(y_true_arr))
-        baseline_crps_i = sample_crps(y_true_arr, baseline)
-
-    def statistic(idx):
-        y = y_true_arr[idx]
-        mae = abs_err[idx].mean()
-        maess = 1 - mae / np.abs(y - np.quantile(y, 0.5)).mean()
-        if dist is None:
-            return np.array([mae, maess, mae, maess])
-        crps = crps_i[idx].mean()
-        crpss = 1 - crps / baseline_crps_i[idx].mean()
-        return np.array([mae, maess, crps, crpss])
-
-    estimates = statistic(np.arange(len(y_true_arr)))
-    draws = bootstrap_statistic(statistic, len(y_true_arr), n_boot, seed)
-    lower, upper = percentile_interval(draws)
-
-    names = ["mae", "maess", "crps", "crpss"]
-    return {
-        name: (float(estimates[i]), float(lower[i]), float(upper[i]))
-        for i, name in enumerate(names)
-    }
 
 
 def compute_sample_cdfs(dist, indices, grid_y):
