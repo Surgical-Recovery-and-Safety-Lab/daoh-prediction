@@ -315,8 +315,7 @@ def plot_pit_histogram_grouped(
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    # Below the axes, the CIs make the labels too long to sit over the bars
-    ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.12))
+    ax.legend(frameon=False, loc="upper left")
 
     if save_path is not None:
         ax.figure.savefig(save_path, dpi=300, bbox_inches="tight")
@@ -380,13 +379,14 @@ def plot_marginal_calibration(model_results, display_labels, save_path=None, ax=
                 color=line.get_color(),
                 alpha=0.2,
                 linewidth=0,
+                label=display_labels.get(label, label) + " 95% CI",
             )
     ax.axhline(0.0, color="gray", linestyle="--", linewidth=1.5)
     ax.set_xlabel(r"$\mathbf{DAOH_{90}}$ (days)", fontweight="bold")
     ax.set_ylabel(r"eCDF - $\mathbf{\overline{CDF}}$", fontweight="bold")
     ax.set_title("Marginal calibration curves", fontweight="bold")
-    ax.legend(frameon=False)
 
+    ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncols=2)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
@@ -444,19 +444,19 @@ def _plot_coverage_metric(
     """
     display_labels = display_labels or {}
     style = {
-        "ngboost": {"color": COLOURS["ngboost"], "marker": "o"},
-        "ordboost": {"color": COLOURS["ordboost"], "marker": "s"},
-        "uniform": {"color": COLOURS["uniform"], "marker": "s"},
-        "quantile": {"color": COLOURS["quantile"], "marker": "s"},
-        "custom": {"color": COLOURS["custom"], "marker": "s"},
-        "continuous": {"color": COLOURS["continuous"], "marker": "s"},
-        "mean": {"color": COLOURS["mean"], "marker": "s"},
-        "median": {"color": COLOURS["median"], "marker": "s"},
-        "4-bins": {"color": COLOURS["4-bins"], "marker": "s"},
-        "8-bins": {"color": COLOURS["8-bins"], "marker": "s"},
-        "12-bins": {"color": COLOURS["12-bins"], "marker": "s"},
-        "16-bins": {"color": COLOURS["16-bins"], "marker": "s"},
-        "20-bins": {"color": COLOURS["20-bins"], "marker": "s"},
+        "ngboost": {"color": COLOURS["ngboost"], "marker": "o", "ms": 0.5},
+        "ordboost": {"color": COLOURS["ordboost"], "marker": "s", "ms": 0.5},
+        "uniform": {"color": COLOURS["uniform"], "marker": "s", "ms": 0.5},
+        "quantile": {"color": COLOURS["quantile"], "marker": "s", "ms": 0.5},
+        "custom": {"color": COLOURS["custom"], "marker": "s", "ms": 0.5},
+        "continuous": {"color": COLOURS["continuous"], "marker": "s", "ms": 0.5},
+        "mean": {"color": COLOURS["mean"], "marker": "s", "ms": 0.5},
+        "median": {"color": COLOURS["median"], "marker": "s", "ms": 0.5},
+        "4-bins": {"color": COLOURS["4-bins"], "marker": "s", "ms": 0.5},
+        "8-bins": {"color": COLOURS["8-bins"], "marker": "s", "ms": 0.5},
+        "12-bins": {"color": COLOURS["12-bins"], "marker": "s", "ms": 0.5},
+        "16-bins": {"color": COLOURS["16-bins"], "marker": "s", "ms": 0.5},
+        "20-bins": {"color": COLOURS["20-bins"], "marker": "s", "ms": 0.5},
     }
 
     fig, ax = plt.subplots(figsize=(7, 5))
