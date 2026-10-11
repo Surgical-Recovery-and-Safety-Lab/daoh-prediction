@@ -257,8 +257,7 @@ def plot_pit_histogram_grouped(
     group_width = bin_width * 0.9
     bar_width = group_width / n_groups
 
-    for i, ele in enumerate(order):
-        model = models[ele]
+    for i, model in enumerate(order):
         hist = model_hists[model]["hist_values"]
         bin_centres = hist["bin_centre"].values
         bin_lefts = bin_centres - bin_width / 2.0
@@ -475,7 +474,7 @@ def _plot_coverage_metric(
 
     n_models = len(model_results)
     for i, model in enumerate(order):
-        results = model_results[order]
+        results = model_results[model]
         x = np.asarray(results["coverage_levels"], dtype=float)
         x = x + 0.4 * (i - (n_models - 1) / 2.0)  # Dodge overlapping models
         y = np.asarray(results[key]) * scale
