@@ -167,6 +167,7 @@ def generate_results(
 
     plot_pit_histogram_grouped(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=ordboost_pipe.run_dir / "plots/pit_histogram.png",
     )
@@ -177,6 +178,7 @@ def generate_results(
 
     plot_marginal_calibration(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=ordboost_pipe.run_dir / "plots/marginal_calibration.png",
     )
@@ -189,12 +191,14 @@ def generate_results(
 
     plot_coverage(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=ordboost_pipe.run_dir / "plots/coverage.png",
     )
 
     plot_sharpness(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=ordboost_pipe.run_dir / "plots/sharpness.png",
     )
@@ -302,6 +306,7 @@ def generate_experiment_results(
 
     plot_pit_histogram_grouped(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=src_dir / "plots/pit_histogram.png",
     )
@@ -314,6 +319,7 @@ def generate_experiment_results(
 
     plot_marginal_calibration(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=src_dir / "plots/marginal_calibration.png",
     )
@@ -326,17 +332,20 @@ def generate_experiment_results(
 
     plot_winkler(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=src_dir / "plots/winkler.png",
     )
     plot_coverage(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=src_dir / "plots/coverage.png",
     )
 
     plot_sharpness(
         results,
+        order=order,
         display_labels=display_labels,
         save_path=src_dir / "plots/sharpness.png",
     )

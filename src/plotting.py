@@ -197,6 +197,7 @@ def plot_sample_cdfs(model_results, colors, title, save_path=None):
 
 def plot_pit_histogram_grouped(
     model_hists,
+    order,
     display_labels=None,
     n_bins=20,
     save_path=None,
@@ -212,6 +213,8 @@ def plot_pit_histogram_grouped(
         Model name -> output of `pit_histogram` (keys "alpha" and
         "hist_values"). The 95% CIs ("alpha_ci" and "hist_ci"), if present,
         are shown as error bars on the bars and in the legend.
+    order : list[str]
+        Order in which to plot model results.
     display_labels : dict[str, str], optional
         Model name -> display name. Defaults to the model name.
     n_bins : int, default=20
@@ -254,7 +257,8 @@ def plot_pit_histogram_grouped(
     group_width = bin_width * 0.9
     bar_width = group_width / n_groups
 
-    for i, model in enumerate(models):
+    for i, ele in enumerate(order):
+        model = models[ele]
         hist = model_hists[model]["hist_values"]
         bin_centres = hist["bin_centre"].values
         bin_lefts = bin_centres - bin_width / 2.0
@@ -322,7 +326,9 @@ def plot_pit_histogram_grouped(
     return ax
 
 
-def plot_marginal_calibration(model_results, display_labels, save_path=None, ax=None):
+def plot_marginal_calibration(
+    model_results, order, display_labels, save_path=None, ax=None
+):
     """Plot the marginal calibration curves.
 
     Parameters
@@ -331,6 +337,8 @@ def plot_marginal_calibration(model_results, display_labels, save_path=None, ax=
         Model name -> (grid_y, diff, lower, upper), as returned by
         `marginal_calibration`. The lower and upper bounds of the 95% CI are
         drawn as a shaded area if present.
+    order : list[str]
+        Order in which to plot model results.
     display_labels : dict[str, str]
         Model name -> display name.
     save_path : str or Path, optional
@@ -363,7 +371,8 @@ def plot_marginal_calibration(model_results, display_labels, save_path=None, ax=
         "20-bins": {"color": COLOURS["20-bins"]},
     }
 
-    for label, results in model_results.items():
+    for label in order:
+        results = model_results[label]
         (line,) = ax.plot(
             results[0],
             results[1],
@@ -401,6 +410,7 @@ def _plot_coverage_metric(
     key,
     ylabel,
     title,
+    order,
     display_labels=None,
     save_path=None,
     scale=1.0,
@@ -416,6 +426,8 @@ def _plot_coverage_metric(
     ----------
     model_results : dict
         Model name -> output of `coverage_sharpness_curve`.
+    order : list[str]
+        Order in which to plot model results.
     key : str
         Metric to plot. Its 95% CI is read from the "<key>_ci" entry, and
         error bars are skipped if it is missing.
@@ -462,7 +474,8 @@ def _plot_coverage_metric(
     fig, ax = plt.subplots(figsize=(7, 5))
 
     n_models = len(model_results)
-    for i, (model, results) in enumerate(model_results.items()):
+    for i, model in enumerate(order):
+        results = model_results[order]
         x = np.asarray(results["coverage_levels"], dtype=float)
         x = x + 0.4 * (i - (n_models - 1) / 2.0)  # Dodge overlapping models
         y = np.asarray(results[key]) * scale
@@ -511,7 +524,7 @@ def _plot_coverage_metric(
     return fig, ax
 
 
-def plot_coverage(model_results, display_labels=None, save_path=None):
+def plot_coverage(model_results, order, display_labels=None, save_path=None):
     """Plot the empirical coverage against the nominal coverage (figure 5).
 
     One line with 95% CI error bars is drawn per model, along with the ideal
@@ -521,6 +534,8 @@ def plot_coverage(model_results, display_labels=None, save_path=None):
     ----------
     model_results : dict
         Model name -> output of `coverage_sharpness_curve`.
+    order : list[str]
+        Order in which to plot model results.
     display_labels : dict[str, str], optional
         Model name -> display name. Defaults to the model name.
     save_path : str or Path, optional
@@ -539,6 +554,7 @@ def plot_coverage(model_results, display_labels=None, save_path=None):
         "empirical_coverage",
         "Empirical coverage (%)",
         "Coverage reliability",
+        order=order,
         display_labels=display_labels,
         save_path=save_path,
         scale=100.0,
@@ -547,7 +563,7 @@ def plot_coverage(model_results, display_labels=None, save_path=None):
     )
 
 
-def plot_sharpness(model_results, display_labels=None, save_path=None):
+def plot_sharpness(model_results, order, display_labels=None, save_path=None):
     """Plot the sharpness across nominal coverage levels (figure 4).
 
     One line with 95% CI error bars is drawn per model.
@@ -556,6 +572,8 @@ def plot_sharpness(model_results, display_labels=None, save_path=None):
     ----------
     model_results : dict
         Model name -> output of `coverage_sharpness_curve`.
+    order : list[str]
+        Order in which to plot model results.
     display_labels : dict[str, str], optional
         Model name -> display name. Defaults to the model name.
     save_path : str or Path, optional
@@ -574,12 +592,13 @@ def plot_sharpness(model_results, display_labels=None, save_path=None):
         "sharpness",
         "Mean interval width (days)",
         "Sharpness",
+        order=order,
         display_labels=display_labels,
         save_path=save_path,
     )
 
 
-def plot_winkler(model_results, display_labels=None, save_path=None):
+def plot_winkler(model_results, order, display_labels=None, save_path=None):
     """Plot the Winkler score across nominal coverage levels.
 
     One line with 95% CI error bars is drawn per model.
@@ -588,6 +607,8 @@ def plot_winkler(model_results, display_labels=None, save_path=None):
     ----------
     model_results : dict
         Model name -> output of `coverage_sharpness_curve`.
+    order : list[str]
+        Order in which to plot model results.
     display_labels : dict[str, str], optional
         Model name -> display name. Defaults to the model name.
     save_path : str or Path, optional
@@ -606,6 +627,7 @@ def plot_winkler(model_results, display_labels=None, save_path=None):
         "winkler",
         "Winkler score",
         "Winkler score",
+        order=order,
         display_labels=display_labels,
         save_path=save_path,
     )
