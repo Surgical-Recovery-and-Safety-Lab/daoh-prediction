@@ -1,4 +1,5 @@
 import argparse
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -60,14 +61,14 @@ def run_experiment(
         res_path.mkdir(exist_ok=True)
 
         generate_experiment_results(experiment)
+        sys.exit()
 
     for config_file in config_files:
-        if run_flag == "run":
-            print(f"Configuration file: {config_file}")
-            pipe = MedpipeRegressor(
-                config=config_file, base_artifact_dir=src_dir / "artifacts"
-            )
-            pipe.run()
+        print(f"Configuration file: {config_file}")
+        pipe = MedpipeRegressor(
+            config=config_file, base_artifact_dir=src_dir / "artifacts"
+        )
+        pipe.run()
 
 
 if __name__ == "__main__":
