@@ -78,6 +78,6 @@ n_splits = 10
 shuffle = true
 
 [workflow.evaluation.metrics]
-metrics = ["crps"]
+metrics = ["mae", "crps"]
 n_bootstraps = 1000
 ci_level = 0.95
