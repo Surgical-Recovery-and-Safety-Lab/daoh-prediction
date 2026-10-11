@@ -105,13 +105,22 @@ def generate_results(
     )
 
     order = ["hgbr", "mord", "ngboost", "ordboost"]
+    versions = {
+        "hgbr": hgbr_version,
+        "mord": mord_version,
+        "ngboost": ngboost_version,
+        "ordboost": ordboost_version,
+    }
     pipes = {
         "hgbr": hgbr_pipe,
         "mord": mord_pipe,
         "ngboost": ngboost_pipe,
         "ordboost": ordboost_pipe,
     }
-    results = {model: load_eval_results(pipe.run_dir) for model, pipe in pipes.items()}
+    results = {
+        model: load_eval_results(f"artifacts/{model}/{version}")
+        for model, version in versions.items()
+    }
 
     generate_result_table(
         results,
@@ -284,9 +293,9 @@ def generate_experiment_results(
     else:
         order = MAPPERS_EXP_ORDER
 
-    for pipe in pipes:
+    for i, pipe in enumerate(pipes, start=1):
         name = pipe.mp_config.meta.project_name
-        results[name] = load_eval_results(pipe.run_dir)
+        results[name] = load_eval_results(artifacts_dir / f"v{i}")
 
     generate_result_table(
         results,
