@@ -63,6 +63,7 @@ def generate_results(
     mord_pipe._orchestrator.prepare_data()
 
     (ordboost_pipe.run_dir / "results").mkdir(parents=True, exist_ok=True)
+    (mord_pipe.run_dir / "results").mkdir(parents=True, exist_ok=True)
     (ordboost_pipe.run_dir / "plots").mkdir(parents=True, exist_ok=True)
     (ngboost_pipe.run_dir / "plots").mkdir(parents=True, exist_ok=True)
 
@@ -94,6 +95,8 @@ def generate_results(
 
     # Generate data tables
     generate_data_table(ordboost_pipe)
+    generate_data_table(mord_pipe)
+
     # Generate the data distribution figure (fig 1)
     generate_data_distribution(
         y_test,
