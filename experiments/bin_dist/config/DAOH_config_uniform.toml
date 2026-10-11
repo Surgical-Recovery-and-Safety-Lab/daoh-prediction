@@ -29,7 +29,7 @@ algorithm = "OrdBoostRegressor"
 [default_model.hyperparameters]
 learning_rate = 0.1
 bin_strategy = "uniform"
-n_bins = 8
+n_bins = 12
 mapper = "uniform"
 loss = "log_loss"
 monotonicity = "isotonic"

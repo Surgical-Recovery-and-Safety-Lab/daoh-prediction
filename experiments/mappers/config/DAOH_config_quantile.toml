@@ -28,7 +28,7 @@ algorithm = "OrdBoostRegressor"
 
 [default_model.hyperparameters]
 learning_rate = 0.1
-bin_edges = [[1, 31, 61, 71, 76, 80, 86, 88]]
+bin_edges = [[1, 31, 61, 71, 76, 80, 85, 86, 87, 88, 89]]
 mapper = "quantile"
 loss = "log_loss"
 monotonicity = "isotonic"
