@@ -9,7 +9,6 @@ from medpipe.visualisation import themes
 from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
-    compute_metrics,
     compute_sample_cdfs,
     coverage_sharpness_curve,
     estimate_patients,
@@ -71,8 +70,6 @@ def generate_results(
     X_test = ordboost_pipe.data_split.X_test
     y_test = ordboost_pipe.data_split.y_test.to_numpy().squeeze()
 
-    y_train = ordboost_pipe.data_split.y_train.to_numpy().squeeze()
-
     # Create the CDF distributions and predictions for other models
     y_preds = {}
     ngboost_dist = wrap_ngboost_pred_dist(
@@ -104,18 +101,14 @@ def generate_results(
         mapper,
     )
 
-    results = {}
     order = ["hgbr", "mord", "ngboost", "ordboost"]
-    for model, dist in table_models.items():
-        y_true = y_test
-        if model == "mord":
-            y_true = mord_pipe.data_split.y_test["DAOH_90"].to_numpy()
-
-        if model == "ngboost" or model == "ordboost":
-            y_pred = np.round(dist.median())
-        else:
-            y_pred = y_preds[model]
-        results[model] = compute_metrics(y_true, y_pred, dist, y_train)
+    pipes = {
+        "hgbr": hgbr_pipe,
+        "mord": mord_pipe,
+        "ngboost": ngboost_pipe,
+        "ordboost": ordboost_pipe,
+    }
+    results = {model: load_eval_results(pipe.run_dir) for model, pipe in pipes.items()}
 
     generate_result_table(
         results,
@@ -255,7 +248,6 @@ def generate_experiment_results(
     pipes[0]._orchestrator.prepare_data()
     X_test = pipes[0].data_split.X_test
     y_test = pipes[0].data_split.y_test.to_numpy().squeeze()
-    y_train = pipes[0].data_split.y_train.to_numpy().squeeze()
 
     models = {}
     mappers = {}
@@ -288,13 +280,9 @@ def generate_experiment_results(
     else:
         order = MAPPERS_EXP_ORDER
 
-    for model, dist in models.items():
-        results[model] = compute_metrics(
-            y_test,
-            np.round(dist.median()),
-            dist,
-            y_train,
-        )
+    for pipe in pipes:
+        name = pipe.mp_config.meta.project_name
+        results[name] = load_eval_results(pipe.run_dir)
 
     generate_result_table(
         results,
@@ -545,14 +533,57 @@ def generate_experiment_cv_results(
     )
 
 
+def load_eval_results(
+    artifact_dir: str | Path,
+) -> dict[str, tuple[float, float, float]]:
+    """Load the DAOH_90 test evaluation results of an artifact.
+
+    When the model has no CRPS (e.g. mord and HGBr) the CRPS is the MAE.
+
+    Parameters
+    ----------
+    artifact_dir : str or Path
+        Artifact directory containing the results folder
+        (e.g. artifacts/ordboost/v1).
+
+    Returns
+    -------
+    dict[str, tuple[float, float, float]]
+        Metric ("mae", "crps") -> (estimate, lower, upper), for the metrics
+        that were evaluated.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the evaluation results file does not exist.
+
+    """
+    path = Path(artifact_dir) / "results" / "DAOH_90_evaluation_results.json"
+    if not path.is_file():
+        msg = f"Missing evaluation results: {path}"
+        raise FileNotFoundError(msg)
+
+    with open(path) as f:
+        overall = json.load(f)["overall"]
+
+    results = {
+        metric: (res["point_estimate"], res["ci_lower"], res["ci_upper"])
+        for metric, res in overall.items()
+    }
+    if "mae" in results:
+        results.setdefault("crps", results["mae"])
+    return results
+
+
 def generate_result_table(results, order, display_labels, save_path):
     """Generate the LaTeX metrics table with 95% CIs and save it.
 
     Parameters
     ----------
     results : dict[str, dict[str, tuple[float, float, float]]]
-        Model key -> metrics from `compute_metrics` (keys "mae", "maess",
-        "crps" and "crpss"), each as (estimate, lower, upper).
+        Model key -> metrics from `load_eval_results` (keys "mae" and "crps"),
+        each as (estimate, lower, upper). A metric row is only written if
+        every model in `order` has it.
     order : list[str]
         Model keys controlling the column order.
     display_labels : dict[str, str]
@@ -572,12 +603,12 @@ def generate_result_table(results, order, display_labels, save_path):
 
     metric_rows = [
         ("MAE (days)", "mae", "{:.2f}"),
-        ("MAESS", "maess", "{:.3f}"),
         ("CRPS (days)", "crps", "{:.2f}"),
-        ("CRPSS", "crpss", "{:.3f}"),
     ]
 
     for row_label, metric_key, fmt in metric_rows:
+        if not all(metric_key in results[key] for key in order):
+            continue
         cells = []
         for key in order:
             value, lower, upper = results[key][metric_key]
