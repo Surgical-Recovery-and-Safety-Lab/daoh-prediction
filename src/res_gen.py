@@ -37,7 +37,7 @@ MAPPERS_EXP_ORDER = ["mean", "median", "uniform", "continuous", "quantile"]
 def generate_results(
     ordboost_version: str,
     ngboost_version: str,
-    hgbr_version: str,
+    HGBr_version: str,
     mord_version: str,
 ) -> None:
     """Main result generating function saved in the ordboost artifact directory.
@@ -48,7 +48,7 @@ def generate_results(
         Version of the ordboost model to load.
     ngboost_version : str
         Version of the ngboost model to load.
-    hgbr_version : str
+    HGBr_version : str
         Version of the HGBr model to load.
     mord_version : str
         Version of the mord model to load.
@@ -56,7 +56,7 @@ def generate_results(
     """
     ordboost_pipe = MedpipeRegressor.load(f"artifacts/ordboost/{ordboost_version}")
     ngboost_pipe = MedpipeRegressor.load(f"artifacts/ngboost/{ngboost_version}")
-    hgbr_pipe = MedpipeRegressor.load(f"artifacts/HGBr/{hgbr_version}")
+    hgbr_pipe = MedpipeRegressor.load(f"artifacts/HGBr/{HGBr_version}")
     mord_pipe = MedpipeRegressor.load(f"artifacts/mord/{mord_version}")
 
     ordboost_pipe._orchestrator.prepare_data()
@@ -77,18 +77,18 @@ def generate_results(
         ngboost_pipe.models["DAOH_90"].predict_dist(X_test)
     )
     ordboost_dist = ordboost_pipe.models["DAOH_90"].predict_dist(X_test)
-    y_preds["hgbr"] = hgbr_pipe.predict(X_test, outcome="DAOH_90")
+    y_preds["HGBr"] = hgbr_pipe.predict(X_test, outcome="DAOH_90")
     y_preds["mord"] = mord_pipe.predict(
         mord_pipe.data_split.X_test,
         outcome="DAOH_90",
     )
 
     models = {"ngboost": ngboost_dist, "ordboost": ordboost_dist}
-    table_models = models | {"hgbr": None, "mord": None}
+    table_models = models | {"HGBr": None, "mord": None}
     display_labels = {
         "ngboost": "NGBoost",
         "ordboost": "OrdBoost",
-        "hgbr": "HGBRegressor",
+        "HGBr": "HGBregressor",
         "mord": "OrdinalRidge",
     }
     mapper = ordboost_pipe.models["DAOH_90"]["regressor"].mapper_
@@ -104,15 +104,15 @@ def generate_results(
         mapper,
     )
 
-    order = ["hgbr", "mord", "ngboost", "ordboost"]
+    order = ["HGBr", "mord", "ngboost", "ordboost"]
     versions = {
-        "hgbr": hgbr_version,
+        "HGBr": HGBr_version,
         "mord": mord_version,
         "ngboost": ngboost_version,
         "ordboost": ordboost_version,
     }
     pipes = {
-        "hgbr": hgbr_pipe,
+        "HGBr": hgbr_pipe,
         "mord": mord_pipe,
         "ngboost": ngboost_pipe,
         "ordboost": ordboost_pipe,
@@ -168,6 +168,9 @@ def generate_results(
         save_path=ordboost_pipe.run_dir / "results/prediction_table.txt",
     )
 
+    # Redefine order and models without HGBr and mord
+    order = ["ngboost", "ordboost"]
+    display_labels = {"ngboost": "NGBoost", "ordboost": "OrdBoost"}
     results = {}
     for model, dist in models.items():
         results[model] = pit_histogram(y_test, dist, mapper)
@@ -210,7 +213,7 @@ def generate_results(
         save_path=ordboost_pipe.run_dir / "plots/sharpness.png",
     )
 
-    generate_cv_results(ordboost_version, ngboost_version, hgbr_version, mord_version)
+    generate_cv_results(ordboost_version, ngboost_version, HGBr_version, mord_version)
 
 
 def generate_experiment_results(
@@ -437,7 +440,7 @@ def generate_cv_table(results, order, display_labels, save_path):
 def generate_cv_results(
     ordboost_version: str,
     ngboost_version: str,
-    hgbr_version: str,
+    HGBr_version: str,
     mord_version: str,
 ) -> None:
     """Generate the cross-validation table for the main models.
@@ -450,21 +453,21 @@ def generate_cv_results(
         Version of the ordboost model.
     ngboost_version : str
         Version of the ngboost model.
-    hgbr_version : str
+    HGBr_version : str
         Version of the HGBr model.
     mord_version : str
         Version of the mord model.
 
     """
-    order = ["hgbr", "mord", "ngboost", "ordboost"]
+    order = ["HGBr", "mord", "ngboost", "ordboost"]
     display_labels = {
         "ngboost": "NGBoost",
         "ordboost": "OrdBoost",
-        "hgbr": "HGBRegressor",
+        "HGBr": "HGBregressor",
         "mord": "OrdinalRidge",
     }
     dirs = {
-        "hgbr": Path(f"artifacts/HGBr/{hgbr_version}"),
+        "HGBr": Path(f"artifacts/HGBr/{HGBr_version}"),
         "mord": Path(f"artifacts/mord/{mord_version}"),
         "ngboost": Path(f"artifacts/ngboost/{ngboost_version}"),
         "ordboost": Path(f"artifacts/ordboost/{ordboost_version}"),
@@ -673,7 +676,7 @@ def generate_prediction_table(results, interval, order, display_labels, save_pat
     # Header row 2: units + median/PI subheader
     header_row_2 = [r"days"]
     for model in order:
-        if model == "hgbr" or model == "mord":
+        if model == "HGBr" or model == "mord":
             header_row_2.append(r"point-estimate")
         else:
             header_row_2.append(rf"median [{interval:.0f}\% PI]")
