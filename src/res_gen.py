@@ -267,6 +267,7 @@ def generate_experiment_results(
         "quantile": "Quantile",
         "uniform": "Uniform",
         "ordboost": "OrdBoost",
+        "custom": "Custom",
         "mean": "Mean",
         "median": "Median",
         "continuous": "Continuous",
