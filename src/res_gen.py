@@ -9,6 +9,7 @@ from medpipe.visualisation import themes
 from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
+    compute_metrics,
     compute_sample_cdfs,
     coverage_sharpness_curve,
     estimate_patients,
@@ -70,6 +71,7 @@ def generate_results(
     # Extract the data
     X_test = ordboost_pipe.data_split.X_test
     y_test = ordboost_pipe.data_split.y_test.to_numpy().squeeze()
+    y_train = ordboost_pipe.data_split.y_train.to_numpy().squeeze()
 
     # Create the CDF distributions and predictions for other models
     y_preds = {}
@@ -117,10 +119,22 @@ def generate_results(
         "ngboost": ngboost_pipe,
         "ordboost": ordboost_pipe,
     }
-    results = {
-        model: load_eval_results(f"artifacts/{model}/{version}")
-        for model, version in versions.items()
-    }
+    results = {}
+    for model, dist in table_models.items():
+        y_true = y_test
+        if model == "mord":
+            y_true = mord_pipe.data_split.y_test["DAOH_90"].to_numpy()
+
+        if dist is not None:
+            y_pred = np.round(dist.median())
+        else:
+            y_pred = y_preds[model]
+
+        # MAE and CRPS come from the evaluation, the skill scores are computed
+        metrics = compute_metrics(y_true, y_pred, dist, y_train)
+        results[model] = load_eval_results(
+            f"artifacts/{model}/{versions[model]}"
+        ) | {"maess": metrics["maess"], "crpss": metrics["crpss"]}
 
     generate_result_table(
         results,
@@ -263,6 +277,7 @@ def generate_experiment_results(
     pipes[0]._orchestrator.prepare_data()
     X_test = pipes[0].data_split.X_test
     y_test = pipes[0].data_split.y_test.to_numpy().squeeze()
+    y_train = pipes[0].data_split.y_train.to_numpy().squeeze()
 
     models = {}
     mappers = {}
@@ -298,7 +313,17 @@ def generate_experiment_results(
 
     for i, pipe in enumerate(pipes, start=1):
         name = pipe.mp_config.meta.project_name
-        results[name] = load_eval_results(artifacts_dir / f"v{i}")
+        # MAE and CRPS come from the evaluation, the skill scores are computed
+        metrics = compute_metrics(
+            y_test,
+            np.round(models[name].median()),
+            models[name],
+            y_train,
+        )
+        results[name] = load_eval_results(artifacts_dir / f"v{i}") | {
+            "maess": metrics["maess"],
+            "crpss": metrics["crpss"],
+        }
 
     generate_result_table(
         results,
@@ -597,9 +622,10 @@ def generate_result_table(results, order, display_labels, save_path):
     Parameters
     ----------
     results : dict[str, dict[str, tuple[float, float, float]]]
-        Model key -> metrics from `load_eval_results` (keys "mae" and "crps"),
-        each as (estimate, lower, upper). A metric row is only written if
-        every model in `order` has it.
+        Model key -> metrics (keys "mae", "maess", "crps" and "crpss"), each
+        as (estimate, lower, upper). MAE and CRPS come from
+        `load_eval_results` and the skill scores from `compute_metrics`. A
+        metric row is only written if every model in `order` has it.
     order : list[str]
         Model keys controlling the column order.
     display_labels : dict[str, str]
@@ -619,7 +645,9 @@ def generate_result_table(results, order, display_labels, save_path):
 
     metric_rows = [
         ("MAE (days)", "mae", "{:.2f}"),
+        ("MAESS", "maess", "{:.3f}"),
         ("CRPS (days)", "crps", "{:.2f}"),
+        ("CRPSS", "crpss", "{:.3f}"),
     ]
 
     for row_label, metric_key, fmt in metric_rows:
