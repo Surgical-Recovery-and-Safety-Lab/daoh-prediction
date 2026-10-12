@@ -81,10 +81,16 @@ def generate_results(
         ngboost_pipe.models["DAOH_90"].predict_dist(X_test)
     )
     ordboost_dist = ordboost_pipe.models["DAOH_90"].predict_dist(X_test)
-    y_preds["HGBr"] = hgbr_pipe.predict(X_test, outcome="DAOH_90")
-    y_preds["mord"] = mord_pipe.predict(
-        mord_pipe.data_split.X_test,
-        outcome="DAOH_90",
+    y_preds["HGBr"] = np.clip(
+        hgbr_pipe.predict(X_test, outcome="DAOH_90"), a_min=0, a_max=89
+    )
+    y_preds["mord"] = np.clip(
+        mord_pipe.predict(
+            mord_pipe.data_split.X_test,
+            outcome="DAOH_90",
+        ),
+        a_min=0,
+        a_max=89,
     )
 
     models = {"ngboost": ngboost_dist, "ordboost": ordboost_dist}
