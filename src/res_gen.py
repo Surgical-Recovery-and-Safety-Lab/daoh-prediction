@@ -862,7 +862,7 @@ def generate_data_distribution(
     bin_edges = np.array(mapper.bin_edges)
     y_binned = mapper.digitize(y_test, bin_edges)
 
-    plot_bins = np.concatenate(([0, 1], bin_edges[1:]))
+    plot_bins = np.concatenate(([0], bin_edges, [90]))
     plot_binned_vs_continuous(
         y_test,
         y_binned,

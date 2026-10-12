@@ -78,15 +78,15 @@ def plot_binned_vs_continuous(
     """
     y_cont = np.asarray(y_cont, dtype=float)
     y_binned = np.asarray(y_binned, dtype=int)
-    edges = np.asarray(bin_edges, dtype=float)
-    n_bins = len(edges)
+    bin_edges = np.asarray(bin_edges, dtype=float)
+    n_bins = len(bin_edges)
 
     fig, axes = plt.subplots(2, 1, figsize=(8, 5), sharex=True, sharey=True)
 
     # Continuous distribution: fine fixed-width histogram.
     axes[0].hist(
         y_cont,
-        bins=n_fine_bins,
+        bins=np.arange(-0.5, n_fine_bins + 0.5, 1),
         color=colors[0],
         edgecolor="black",
         label=r"Continuous $DAOH_{90}$",
@@ -94,13 +94,14 @@ def plot_binned_vs_continuous(
 
     # Binned distribution: bars positioned at the real bin_edges values,
     # each spanning its true [edges[k], edges[k+1]) width.
-    counts = np.bincount(y_binned, minlength=n_bins).astype(float)
-    widths = np.diff(edges)
+    counts = np.bincount(y_binned, minlength=n_bins - 1).astype(float)
+    widths = np.diff(bin_edges)
+    edges = np.concatenate(([-0.5], -0.5 + np.cumsum(widths)))
     heights = counts / widths if density else counts
 
     axes[1].bar(
         edges[:-1],
-        heights[1:],
+        heights,
         width=widths,
         align="edge",
         color=colors[1],
