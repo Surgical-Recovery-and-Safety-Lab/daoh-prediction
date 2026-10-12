@@ -689,7 +689,7 @@ def generate_prediction_table(results, interval, order, display_labels, save_pat
 
     """
     lines = [
-        r"\begin{tabular}{lll}",
+        r"\begin{tabular}{lcccc}",
         r"\toprule",
     ]
     indices = results[order[0]].keys()
