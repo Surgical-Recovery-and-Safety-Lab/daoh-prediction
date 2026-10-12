@@ -3,9 +3,11 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from medpipe import MedpipeRegressor, ModelRegistry
+from medpipe import MedpipeRegressor, MetricRegistry, ModelRegistry
+from medpipe.metrics import MetricSpec
 from mord import OrdinalRidge
 
+from src.helpers_ngboost import crps_ngboost_samples, crps_ngboost_score
 from src.res_gen import generate_experiment_results, generate_results
 
 
@@ -153,6 +155,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ModelRegistry.register(name="OrdinalRidge")(OrdinalRidge)
+
+    MetricRegistry.register_spec(
+        MetricSpec(
+            name="crps_ngboost",
+            func=crps_ngboost_score,
+            response_method="predict_dist",
+            display_name="CRPS (NGBoost)",
+            per_sample_func=crps_ngboost_samples,
+        )
+    )
 
     if args.command == "run":
         # The run subcommand was called
