@@ -36,7 +36,10 @@ class NGBoostDistAdapter:
             Mean of each predicted distribution.
 
         """
-        return np.asarray(self._dist.mean())
+        vals = self._dist.mean()
+        vals[np.where(vals < 0)[0]] = 0
+        vals[np.where(vals > 89)[0]] = 89
+        return np.asarray(vals)
 
     def median(self) -> np.ndarray:
         """Compute the per-sample median.
@@ -47,7 +50,10 @@ class NGBoostDistAdapter:
             Median of each predicted distribution.
 
         """
-        return np.asarray(self._dist.median())
+        vals = self._dist.median()
+        vals[np.where(vals < 0)[0]] = 0
+        vals[np.where(vals > 89)[0]] = 89
+        return np.asarray(vals)
 
     def ppf(self, q) -> np.ndarray:
         """Compute the per-sample quantile at level(s) q.
@@ -87,6 +93,8 @@ class NGBoostDistAdapter:
 
         """
         lower, upper = self._dist.interval(1.0 - alpha)
+        lower[np.where(lower < 0)[0]] = 0
+        upper[np.where(upper > 89)[0]] = 89
         return np.asarray(lower), np.asarray(upper)
 
     def cdf(self, y) -> np.ndarray:
@@ -104,7 +112,10 @@ class NGBoostDistAdapter:
             CDF values.
 
         """
-        return np.asarray(self._dist.cdf(y))
+        vals = self._dist.cdf(y)
+        vals[vals < 0] = 0
+        vals[vals > 89] = 89
+        return np.asarray(vals)
 
     def __getitem__(self, mask) -> NGBoostDistAdapter:
         """Slice the samples with a boolean mask.
