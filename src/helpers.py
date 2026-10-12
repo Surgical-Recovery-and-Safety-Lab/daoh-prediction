@@ -212,7 +212,7 @@ def collect_bin_edges(pipes, outcome: str = "DAOH_90") -> dict[str, np.ndarray]:
 
     """
     return {
-        pipe.mp_config.meta.project_name: np.asarray(pipe.models[outcome].bin_edges_)
+        pipe.mp_config.meta.project_name: np.asarray(pipe.models[outcome][1].bin_edges_)
         for pipe in pipes
     }
 
