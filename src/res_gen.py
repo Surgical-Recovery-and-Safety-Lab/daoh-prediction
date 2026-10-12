@@ -97,7 +97,6 @@ def generate_results(
 
     # Generate data tables
     generate_data_table(ordboost_pipe)
-    generate_data_table(mord_pipe)
 
     # Generate the data distribution figure (fig 1)
     generate_data_distribution(
@@ -132,9 +131,10 @@ def generate_results(
 
         # MAE and CRPS come from the evaluation, the skill scores are computed
         metrics = compute_metrics(y_true, y_pred, dist, y_train)
-        results[model] = load_eval_results(
-            f"artifacts/{model}/{versions[model]}"
-        ) | {"maess": metrics["maess"], "crpss": metrics["crpss"]}
+        results[model] = load_eval_results(f"artifacts/{model}/{versions[model]}") | {
+            "maess": metrics["maess"],
+            "crpss": metrics["crpss"],
+        }
 
     generate_result_table(
         results,
@@ -804,7 +804,7 @@ def generate_data_distribution(
     bin_edges = np.array(mapper.bin_edges)
     y_binned = mapper.digitize(y_test, bin_edges)
 
-    plot_bins = np.concatenate(([0, 1], bin_edges[2:] - 1, [89]))
+    plot_bins = np.concatenate(([0, 1], bin_edges[1:]))
     plot_binned_vs_continuous(
         y_test,
         y_binned,
