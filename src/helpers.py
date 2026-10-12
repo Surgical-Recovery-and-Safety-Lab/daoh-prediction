@@ -195,6 +195,28 @@ def save_table(latex_str, path: str | Path = "table.txt"):
         f.write(latex_str + "\n")
 
 
+def collect_bin_edges(pipes, outcome: str = "DAOH_90") -> dict[str, np.ndarray]:
+    """Collect the fitted bin edges of each pipeline, keyed by project name.
+
+    Parameters
+    ----------
+    pipes : list
+        Fitted MedpipeRegressor pipelines.
+    outcome : str, default="DAOH_90"
+        Name of the model to read the edges from.
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Project name -> fitted bin edges (`bin_edges_`).
+
+    """
+    return {
+        pipe.mp_config.meta.project_name: np.asarray(pipe.models[outcome].bin_edges_)
+        for pipe in pipes
+    }
+
+
 def pit_histogram(
     y_true: ArrayLike,
     dist: ContinuousPredictiveDistribution,

@@ -10,6 +10,7 @@ from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
     compute_metrics,
+    collect_bin_edges,
     compute_sample_cdfs,
     coverage_sharpness_curve,
     estimate_patients,
@@ -383,6 +384,13 @@ def generate_experiment_results(
         save_path=src_dir / "plots/sharpness.png",
     )
 
+    generate_bin_edges_table(
+        pipes,
+        order=order,
+        display_labels=display_labels,
+        save_path=src_dir / "results/table_bins.txt",
+    )
+
     generate_experiment_cv_results(experiment)
 
 
@@ -666,6 +674,48 @@ def generate_result_table(results, order, display_labels, save_path):
     table = "\n".join(lines)
 
     save_table(table, save_path)
+
+
+def generate_bin_edges_table(pipes, order, display_labels, save_path):
+    """Generate the LaTeX table of fitted bin edges and save it.
+
+    The first column is the bin number and there is one column of bin edges
+    per model. Models with fewer bins leave the remaining cells empty.
+
+    Parameters
+    ----------
+    pipes : list[MedpipeRegressor]
+        Fitted pipelines, read through `pipe.models["DAOH_90"].bin_edges_`.
+    order : list[str]
+        Model keys (project names) controlling the column order.
+    display_labels : dict[str, str]
+        Model key -> LaTeX-escaped display string.
+    save_path : str or Path
+        File to save the table in.
+
+    """
+    edges = collect_bin_edges(pipes)
+    n_rows = max(len(edges[key]) for key in order)
+
+    lines = [
+        r"\begin{tabular}{" + "c" * (len(order) + 1) + "}",
+        r"\toprule",
+        r"\textbf{Bin} & "
+        + " & ".join(rf"\textbf{{{display_labels[key]}}}" for key in order)
+        + r" \\",
+        r"\midrule",
+    ]
+
+    for i in range(n_rows):
+        cells = [
+            f"{edges[key][i]:.2f}" if i < len(edges[key]) else "" for key in order
+        ]
+        lines.append(f"{i + 1} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+
+    save_table("\n".join(lines), save_path)
 
 
 def generate_prediction_table(results, interval, order, display_labels, save_path):
