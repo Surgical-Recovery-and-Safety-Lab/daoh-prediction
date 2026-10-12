@@ -389,7 +389,13 @@ def plot_marginal_calibration(
                 linewidth=0,
                 label=display_labels.get(label, label) + " 95% CI",
             )
-    ax.axhline(0.0, color="gray", linestyle="--", linewidth=1.5)
+    ax.axhline(
+        0.0,
+        color="black",
+        linestyle="--",
+        linewidth=1.5,
+        label="Ideal calibration",
+    )
     ax.set_xlabel(r"$\mathbf{DAOH_{90}}$ (days)", fontweight="bold")
     ax.set_ylabel(r"eCDF - $\mathbf{\overline{CDF}}$", fontweight="bold")
     ax.set_title("Marginal calibration curves", fontweight="bold")
