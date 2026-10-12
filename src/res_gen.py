@@ -9,8 +9,9 @@ from medpipe.visualisation import themes
 from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
-    compute_metrics,
+    bin_intervals,
     collect_bin_edges,
+    compute_metrics,
     compute_sample_cdfs,
     coverage_sharpness_curve,
     estimate_patients,
@@ -676,41 +677,48 @@ def generate_result_table(results, order, display_labels, save_path):
     save_table(table, save_path)
 
 
-def generate_bin_edges_table(pipes, order, display_labels, save_path):
+def generate_bin_edges_table(
+    pipes, order, display_labels, save_path, per_line: int = 4
+):
     """Generate the LaTeX table of fitted bin edges and save it.
 
-    The first column is the bin number and there is one column of bin edges
-    per model. Models with fewer bins leave the remaining cells empty.
+    One row per model, listing its integer bin intervals (see `bin_intervals`)
+    wrapped over several lines.
 
     Parameters
     ----------
     pipes : list[MedpipeRegressor]
         Fitted pipelines, read through `pipe.models["DAOH_90"].bin_edges_`.
     order : list[str]
-        Model keys (project names) controlling the column order.
+        Model keys (project names) controlling the row order.
     display_labels : dict[str, str]
         Model key -> LaTeX-escaped display string.
     save_path : str or Path
         File to save the table in.
+    per_line : int, default=4
+        Maximum number of intervals per line.
 
     """
     edges = collect_bin_edges(pipes)
-    n_rows = max(len(edges[key]) for key in order)
 
     lines = [
-        r"\begin{tabular}{" + "c" * (len(order) + 1) + "}",
+        r"\begin{tabular}{cc}",
         r"\toprule",
-        r"\textbf{Bin} & "
-        + " & ".join(rf"\textbf{{{display_labels[key]}}}" for key in order)
-        + r" \\",
+        r"\textbf{Model} & \textbf{Bins} \\",
         r"\midrule",
     ]
 
-    for i in range(n_rows):
-        cells = [
-            f"{edges[key][i]:.2f}" if i < len(edges[key]) else "" for key in order
+    for key in order:
+        intervals = bin_intervals(edges[key])
+        chunks = [
+            ", ".join(intervals[i : i + per_line])
+            for i in range(0, len(intervals), per_line)
         ]
-        lines.append(f"{i + 1} & " + " & ".join(cells) + r" \\")
+        for j, chunk in enumerate(chunks):
+            last = j == len(chunks) - 1
+            label = display_labels[key] if j == 0 else ""
+            suffix = r" \\" if last else r", \\"
+            lines.append(f"{label} & {chunk}{suffix}")
 
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")

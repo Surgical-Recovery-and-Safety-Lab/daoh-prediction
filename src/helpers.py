@@ -217,6 +217,32 @@ def collect_bin_edges(pipes, outcome: str = "DAOH_90") -> dict[str, np.ndarray]:
     }
 
 
+def bin_intervals(edges, y_min: int = 0, y_max: int = 89) -> list[str]:
+    """Convert interior bin edges into integer interval strings.
+
+    Edges are rounded up with np.ceil. The first bin is [y_min, ceil(edges[0])],
+    each following bin starts one above the previous upper bound, and the last
+    bin is [ceil(edges[-1]) + 1, y_max].
+
+    Parameters
+    ----------
+    edges : array-like
+        Fitted interior bin edges (`bin_edges_`).
+    y_min, y_max : int
+        Lower and upper limit of the outcome range.
+
+    Returns
+    -------
+    list[str]
+        One "[low -- high]" string per bin.
+
+    """
+    uppers = [int(u) for u in np.ceil(np.asarray(edges))]
+    lowers = [y_min] + [u + 1 for u in uppers]
+    uppers = [*uppers, y_max]
+    return [f"[{lo} -- {hi}]" for lo, hi in zip(lowers, uppers)]
+
+
 def pit_histogram(
     y_true: ArrayLike,
     dist: ContinuousPredictiveDistribution,
