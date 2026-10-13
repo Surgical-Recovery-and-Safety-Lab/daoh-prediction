@@ -552,6 +552,93 @@ def estimate_patients(dist, ind: dict[int, int], alpha: float) -> dict[int, tupl
     return results
 
 
+def load_eval_results(
+    artifact_dir: str | Path,
+) -> dict[str, tuple[float, float, float]]:
+    """Load the DAOH_90 test evaluation results of an artifact.
+
+    When the model has no CRPS (e.g. mord and HGBr) the CRPS is the MAE.
+
+    Parameters
+    ----------
+    artifact_dir : str or Path
+        Artifact directory containing the results folder
+        (e.g. artifacts/ordboost/v1).
+
+    Returns
+    -------
+    dict[str, tuple[float, float, float]]
+        Metric ("mae", "crps") -> (estimate, lower, upper), for the metrics
+        that were evaluated.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the evaluation results file does not exist.
+
+    """
+    path = Path(artifact_dir) / "results" / "DAOH_90_evaluation_results.json"
+    if not path.is_file():
+        msg = f"Missing evaluation results: {path}"
+        raise FileNotFoundError(msg)
+
+    with open(path) as f:
+        overall = json.load(f)["overall"]
+
+    results = {
+        metric: (res["point_estimate"], res["ci_lower"], res["ci_upper"])
+        for metric, res in overall.items()
+    }
+    if "mae" in results:
+        results.setdefault("crps", results["mae"])
+    if "crps_ngboost" in results:
+        results.setdefault("crps", results["crps_ngboost"])
+    return results
+
+
+def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
+    """Load the DAOH_90 cross-validation summary of an artifact.
+
+    The scores are stored as negated losses (sklearn convention), so the sign
+    is flipped to report MAE and CRPS as positive values. When the model has
+    no CRPS (e.g. mord and HGBr) the CRPS is the MAE.
+
+    Parameters
+    ----------
+    artifact_dir : str or Path
+        Artifact directory containing the CV folder (e.g. artifacts/ordboost/v1).
+
+    Returns
+    -------
+    dict[str, tuple[float, float]]
+        Metric ("mae", "crps") -> (mean, std).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the CV summary file does not exist.
+
+    """
+    path = Path(artifact_dir) / "CV" / "DAOH_90_cv_summary.json"
+    if not path.is_file():
+        msg = f"Missing CV summary: {path}"
+        raise FileNotFoundError(msg)
+
+    with open(path) as f:
+        summary = json.load(f)
+
+    results = {
+        metric: (-summary[metric]["mean"], summary[metric]["std"])
+        for metric in ("mae", "crps", "crps_ngboost")
+        if metric in summary
+    }
+    results.setdefault("crps", results["mae"])
+    if "crps_ngboost" in results.keys():
+        results.setdefault("crps", results["crps_ngboost"])
+        results.pop("crps_ngboost")
+    return results
+
+
 def _format_continuous(series):
     """Format a series as 'median (Q1--Q3)', ignoring NaNs.
 
