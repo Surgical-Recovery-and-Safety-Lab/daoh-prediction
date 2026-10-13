@@ -1,0 +1,11 @@
+__pycache__
+.venv/
+
+artifacts/ngboost/v*/models
+artifacts/ordboost/v*/models
+artifacts/mord/v*/models
+artifacts/HGBr/v*/models
+
+experiments/n_bins/artifacts/v*/models
+experiments/bin_dist/artifacts/v*/models
+experiments/mappers/artifacts/v*/models

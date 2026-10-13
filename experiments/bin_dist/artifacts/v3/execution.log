@@ -1,0 +1,47 @@
+2026-10-12 16:26:59,117 | medpipe.orchestrator | INFO | orchestrator:172 | Initialised MedpipeOrchestrator. Run directory: experiments/bin_dist/artifacts/v6
+2026-10-12 16:26:59,242 | medpipe.orchestrator | INFO | orchestrator:257 | Reproducibility artifacts saved successfully.
+2026-10-12 16:26:59,243 | medpipe | INFO | pipeline:739 | MedpipeRegressor initialisation complete.
+2026-10-12 16:26:59,293 | medpipe | INFO | pipeline:1026 | Executing full MedpipeRegressor pipeline end-to-end.
+2026-10-12 16:26:59,293 | medpipe | DEBUG | pipeline:1030 | Executing full MedpipeRegressor pipeline in cv mode.
+2026-10-12 16:26:59,294 | medpipe | INFO | pipeline:1040 | Step 1/3: Ingesting and splitting dataset.
+2026-10-12 16:26:59,294 | medpipe.orchestrator | INFO | orchestrator:459 | Ingesting data from /pvol/mroe734/data/NZ_data.v2.parquet
+2026-10-12 16:27:01,166 | medpipe.orchestrator | DEBUG | orchestrator:467 | Loaded data shape: (2585589, 95)
+2026-10-12 16:27:01,372 | medpipe.orchestrator | INFO | orchestrator:506 | Filtered dataset from 95 down to 13 required columns.
+2026-10-12 16:27:01,372 | medpipe.orchestrator | DEBUG | orchestrator:510 | Filtered data shape: (2585589, 13)
+2026-10-12 16:27:01,748 | medpipe.orchestrator | INFO | orchestrator:356 | Data successfully split into Train (2,238,312), and Test (347,277) sets.
+2026-10-12 16:27:01,748 | medpipe.orchestrator | DEBUG | orchestrator:360 | Train set initial shape: (2238312, 12)
+2026-10-12 16:27:01,748 | medpipe.orchestrator | DEBUG | orchestrator:361 | Test set initial shape: (347277, 12)
+2026-10-12 16:27:01,840 | medpipe.orchestrator | INFO | orchestrator:389 | Removed ['OP_YEAR'] from data.
+2026-10-12 16:27:01,840 | medpipe.orchestrator | DEBUG | orchestrator:392 | Train set final shape: (2238312, 11)
+2026-10-12 16:27:01,840 | medpipe.orchestrator | DEBUG | orchestrator:393 | Test set final shape: (347277, 11)
+2026-10-12 16:27:01,880 | medpipe | INFO | pipeline:1046 | Step 2/3: Fitting outcome models.
+2026-10-12 16:27:01,880 | medpipe | INFO | pipeline:855 | Starting model fitting across configured target outcomes.
+2026-10-12 16:27:01,880 | medpipe.runner | DEBUG | runner:531 | Starting fitting of 1 models.
+2026-10-12 16:27:01,880 | medpipe.runner | INFO | runner:436 | --- Starting execution for outcome: DAOH_90 ---
+2026-10-12 16:27:01,880 | medpipe.orchestrator | INFO | orchestrator:665 | Constructing preprocessing pipeline.
+2026-10-12 16:27:01,881 | medpipe.orchestrator | DEBUG | orchestrator:681 | Creating operation 1: name='OrdinalEncoder' columns=['SEX', 'ETHNICITY', 'ADMISSION_ACUITY', 'ADMISSION_SOURCE', 'CATEGORY_LEVEL_1', 'CATEGORY_LEVEL_2', 'ASA', 'OP_SEVERITY', 'PRIOR_CANCER', 'TRAUMA'] on columns ['SEX', 'ETHNICITY', 'ADMISSION_ACUITY', 'ADMISSION_SOURCE', 'CATEGORY_LEVEL_1', 'CATEGORY_LEVEL_2', 'ASA', 'OP_SEVERITY', 'PRIOR_CANCER', 'TRAUMA']
+2026-10-12 16:27:01,881 | medpipe.runner | INFO | runner:103 | Estimator OrdBoostRegressor successfully instantiated
+2026-10-12 16:27:01,881 | medpipe.runner | DEBUG | runner:106 | Estimator instantiated with parameters {'learning_rate': 0.1, 'bin_strategy': 'uniform', 'n_bins': 12, 'mapper': 'uniform', 'loss': 'log_loss', 'monotonicity': 'isotonic', 'max_iter': 100, 'max_leaf_nodes': 512, 'min_samples_leaf': 512, 'mapper_kwargs': {'n_points': 0, 'floor_atom': True, 'ceiling_atom': True, 'lower_bound': 0, 'upper_bound': 89}}
+2026-10-12 16:27:01,881 | medpipe.runner | DEBUG | runner:469 | [DAOH_90] CV KFold with arguments {'n_splits': 10, 'shuffle': True, 'random_state': 42}
+2026-10-12 16:27:01,883 | medpipe.runner | DEBUG | runner:278 | [DAOH_90] Cross-validation input dimensions - X_train: (2238312, 11), y_train: (2238312,), Positives: 187327833
+2026-10-12 16:27:01,883 | medpipe.runner | DEBUG | runner:290 | [DAOH_90] Active metrics scorers: ['mae', 'crps']
+2026-10-12 16:27:01,883 | medpipe.runner | INFO | runner:332 | [DAOH_90] Running standard cross-validation.
+2026-10-12 16:27:01,883 | medpipe.runner | DEBUG | runner:334 | [DAOH_90] Cross-validation parallel jobs number: 1
+2026-10-12 17:02:30,838 | medpipe.runner | INFO | runner:202 | [DAOH_90] Detailed CV results saved to experiments/bin_dist/artifacts/v6/CV/DAOH_90_cv_results.csv
+2026-10-12 17:02:30,840 | medpipe.runner | INFO | runner:217 | [DAOH_90] CV summary saved to experiments/bin_dist/artifacts/v6/CV/DAOH_90_cv_summary.json
+2026-10-12 17:02:30,840 | medpipe.runner | DEBUG | runner:355 | [DAOH_90] Fold scores for 'test_mae': [-4.5982, -4.6034, -4.6155, -4.6042, -4.6434, -4.5927, -4.5764, -4.571, -4.6013, -4.6351]
+2026-10-12 17:02:30,840 | medpipe.runner | DEBUG | runner:355 | [DAOH_90] Fold scores for 'test_crps': [-2.9963, -2.9896, -3.0034, -3.0014, -3.0305, -2.9924, -2.9816, -2.9652, -2.9965, -3.0234]
+2026-10-12 17:02:30,840 | medpipe.runner | INFO | runner:360 | [DAOH_90] Fitting final base pipeline on full training data.
+2026-10-12 17:03:23,540 | medpipe.runner | INFO | runner:159 | [DAOH_90] Model saved to experiments/bin_dist/artifacts/v6/models/DAOH_90_model.joblib
+2026-10-12 17:03:23,540 | medpipe.runner | INFO | runner:497 | --- Finished execution for outcome: DAOH_90 ---
+2026-10-12 17:03:23,540 | medpipe.runner | DEBUG | runner:555 | [DAOH_90] Fitting completed in 2181.66 seconds.
+2026-10-12 17:03:26,288 | medpipe.runner | INFO | runner:173 | Fitted final models saved to experiments/bin_dist/artifacts/v6/models/uniform_fitted.joblib
+2026-10-12 17:03:26,288 | medpipe | INFO | pipeline:863 | Completed model fitting for all target outcomes.
+2026-10-12 17:03:26,288 | medpipe | DEBUG | pipeline:1056 | Model fitting completed in 2184.41 seconds.
+2026-10-12 17:03:26,288 | medpipe | INFO | pipeline:1059 | Step 3/3: Evaluating models on holdout test set.
+2026-10-12 17:03:26,288 | medpipe.evaluator | INFO | evaluator:502 | --- Starting model evaluation for outcome: DAOH_90 ---
+2026-10-12 17:05:34,411 | medpipe.evaluator | INFO | evaluator:513 | [DAOH_90] Computing overall metrics with 1000 bootstrap iterations (CI=0.95).
+2026-10-12 17:07:52,051 | medpipe.evaluator | INFO | evaluator:604 | [DAOH_90] Successfully saved evaluation artifacts to experiments/bin_dist/artifacts/v6/results/DAOH_90_evaluation_results.json.
+2026-10-12 17:07:52,051 | medpipe.evaluator | INFO | evaluator:571 | --- Finished model evaluation for outcome: DAOH_90 ---
+2026-10-12 17:07:52,052 | medpipe | DEBUG | pipeline:1093 | Full pipeline run completed in 2452.76 seconds.
+2026-10-12 17:07:52,052 | medpipe | INFO | pipeline:1096 | Full MedpipeRegressor pipeline execution finished successfully.

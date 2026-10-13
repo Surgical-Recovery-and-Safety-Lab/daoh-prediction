@@ -1,0 +1,127 @@
+{
+    "meta": {
+        "project_name": "16-bins",
+        "run_mode": "cv",
+        "verbose": "info"
+    },
+    "data": {
+        "path": "/pvol/mroe734/data/NZ_data.v2.parquet",
+        "predictors": [
+            "AGE",
+            "SEX",
+            "PRIOR_CANCER",
+            "ETHNICITY",
+            "ASA",
+            "ADMISSION_ACUITY",
+            "ADMISSION_SOURCE",
+            "CATEGORY_LEVEL_1",
+            "CATEGORY_LEVEL_2",
+            "OP_SEVERITY",
+            "TRAUMA"
+        ],
+        "outcomes": [
+            "DAOH_90"
+        ],
+        "kwargs": {}
+    },
+    "workflow": {
+        "random_state": 42,
+        "n_jobs": 1,
+        "preprocessing": {
+            "preprocess": true,
+            "operations": [
+                {
+                    "name": "OrdinalEncoder",
+                    "columns": [
+                        "SEX",
+                        "ETHNICITY",
+                        "ADMISSION_ACUITY",
+                        "ADMISSION_SOURCE",
+                        "CATEGORY_LEVEL_1",
+                        "CATEGORY_LEVEL_2",
+                        "ASA",
+                        "OP_SEVERITY",
+                        "PRIOR_CANCER",
+                        "TRAUMA"
+                    ]
+                }
+            ]
+        },
+        "validation": {
+            "test_split": {
+                "strategy": "group",
+                "group_column": "OP_YEAR",
+                "values": [
+                    2023,
+                    2024
+                ],
+                "test_size": null
+            },
+            "cross_validation": {
+                "strategy": "random",
+                "grid_search": false,
+                "group_column": null,
+                "n_splits": 10,
+                "shuffle": true
+            },
+            "recalibration_split": null
+        },
+        "evaluation": {
+            "metrics": {
+                "metrics": [
+                    "mae",
+                    "crps"
+                ],
+                "n_bootstraps": 1000,
+                "ci_level": 0.95
+            },
+            "fairness": null
+        }
+    },
+    "display": null,
+    "default_model": {
+        "algorithm": "OrdBoostRegressor",
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "bin_strategy": "uniform",
+            "n_bins": 16,
+            "mapper": "uniform",
+            "loss": "log_loss",
+            "monotonicity": "isotonic",
+            "max_iter": 100,
+            "max_leaf_nodes": 512,
+            "min_samples_leaf": 512,
+            "mapper_kwargs": {
+                "n_points": 0,
+                "floor_atom": true,
+                "ceiling_atom": true,
+                "lower_bound": 0,
+                "upper_bound": 89
+            }
+        }
+    },
+    "outcome_overrides": {},
+    "resolved_models": {
+        "DAOH_90": {
+            "algorithm": "OrdBoostRegressor",
+            "hyperparameters": {
+                "learning_rate": 0.1,
+                "bin_strategy": "uniform",
+                "n_bins": 16,
+                "mapper": "uniform",
+                "loss": "log_loss",
+                "monotonicity": "isotonic",
+                "max_iter": 100,
+                "max_leaf_nodes": 512,
+                "min_samples_leaf": 512,
+                "mapper_kwargs": {
+                    "n_points": 0,
+                    "floor_atom": true,
+                    "ceiling_atom": true,
+                    "lower_bound": 0,
+                    "upper_bound": 89
+                }
+            }
+        }
+    }
+}

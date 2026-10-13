@@ -1,0 +1,17 @@
+# Models and metrics
+medpipe==0.4.0.dev2
+ordboost==0.4.0
+mord
+ngboost
+properscoring
+scores
+scikit-learn
+
+# Data and plotting
+numpy
+pandas
+xarray
+matplotlib
+
+# Linting
+ruff

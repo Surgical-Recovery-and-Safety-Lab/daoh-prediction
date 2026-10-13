@@ -1,0 +1,8 @@
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Metrics} & \textbf{4-bins} & \textbf{8-bins} & \textbf{12-bins} & \textbf{16-bins} & \textbf{20-bins} \\
+\midrule
+MAE (days) & $8.41 \pm 0.02$ & $5.33 \pm 0.02$ & $4.60 \pm 0.02$ & $4.31 \pm 0.02$ & $4.16 \pm 0.02$ \\
+CRPS (days) & $4.84 \pm 0.02$ & $3.36 \pm 0.02$ & $3.00 \pm 0.02$ & $2.85 \pm 0.02$ & $2.77 \pm 0.02$ \\
+\bottomrule
+\end{tabular}
