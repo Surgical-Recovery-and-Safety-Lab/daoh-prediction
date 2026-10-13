@@ -2,6 +2,7 @@
 package, region filtering, and LaTeX table generation.
 """
 
+import json
 from pathlib import Path
 
 import numpy as np
