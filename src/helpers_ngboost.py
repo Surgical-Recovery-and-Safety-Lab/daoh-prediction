@@ -134,13 +134,18 @@ class NGBoostDistAdapter:
         return NGBoostDistAdapter(self._dist.dist(*new_args, **new_kwds))
 
 
-def crps_ngboost_score(y_true, ngb_dist) -> float:
+def crps_ngboost_per_sample(y_true, ngb_dist) -> float:
     """Mean CRPS of an NGBoostDistAdapter (lower is better)."""
     dist = ngb_dist.dist
     mean = np.clip(dist.mean(), a_min=0, a_max=89)
     sig = dist.std()
     scores = np.asarray(ps.crps_gaussian(y_true, mu=mean, sig=sig))
-    return float(np.mean(scores))
+    return np.mean(scores)
+
+
+def crps_ngboost_score(y_true, ngb_dist) -> float:
+    """Mean CRPS of an NGBoostDistAdapter (lower is better)."""
+    return float(np.mean(crps_ngboost_per_sample(y_true, ngb_dist)))
 
 
 def crps_ngboost_samples(y_true, dist: NGBoostDistAdapter) -> np.ndarray:
