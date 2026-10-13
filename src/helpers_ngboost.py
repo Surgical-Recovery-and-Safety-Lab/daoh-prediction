@@ -5,10 +5,14 @@ reused completely unchanged.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import properscoring as ps
 import xarray as xr
+from numpy.typing import ArrayLike
 from scores.probability import PitFcstAtObs
+from scipy.stats._distn_infrastructure import rv_frozen
 
 
 class NGBoostDistAdapter:
@@ -24,7 +28,7 @@ class NGBoostDistAdapter:
         sample.
     """
 
-    def __init__(self, scipy_frozen_dist):
+    def __init__(self, scipy_frozen_dist: rv_frozen) -> None:
         self._dist = scipy_frozen_dist
 
     def mean(self) -> np.ndarray:
@@ -49,7 +53,7 @@ class NGBoostDistAdapter:
         """
         return np.clip(self._dist.median(), a_min=0, a_max=89)
 
-    def ppf(self, q) -> np.ndarray:
+    def ppf(self, q: ArrayLike) -> np.ndarray:
         """Compute the per-sample quantile at level(s) q.
 
         Parameters
@@ -65,7 +69,7 @@ class NGBoostDistAdapter:
         """
         return np.asarray(self._dist.ppf(q))
 
-    def interval(self, alpha: float = 0.10):
+    def interval(self, alpha: float = 0.10) -> tuple[np.ndarray, np.ndarray]:
         """Compute the central prediction interval at significance level alpha.
 
         Scipy's own `.interval()` takes a *confidence* level (the fraction
@@ -89,7 +93,7 @@ class NGBoostDistAdapter:
         lower, upper = self._dist.interval(1.0 - alpha)
         return np.clip(lower, a_min=0, a_max=89), np.clip(upper, a_min=0, a_max=89)
 
-    def cdf(self, y) -> np.ndarray:
+    def cdf(self, y: ArrayLike) -> np.ndarray:
         """Evaluate the CDF at y.
 
         Parameters
@@ -106,7 +110,7 @@ class NGBoostDistAdapter:
         """
         return np.clip(self._dist.cdf(y), a_min=0, a_max=89)
 
-    def __getitem__(self, mask) -> NGBoostDistAdapter:
+    def __getitem__(self, mask: ArrayLike) -> NGBoostDistAdapter:
         """Slice the samples with a boolean mask.
 
         The underlying scipy distribution is re-frozen on the masked
@@ -134,20 +138,53 @@ class NGBoostDistAdapter:
         return NGBoostDistAdapter(self._dist.dist(*new_args, **new_kwds))
 
 
-def crps_ngboost_per_sample(y_true, ngb_dist) -> np.ndarray:
-    """Mean CRPS of an NGBoostDistAdapter (lower is better)."""
+def crps_ngboost_per_sample(y_true: ArrayLike, ngb_dist: Any) -> np.ndarray:
+    """Compute the per-sample Gaussian CRPS of an NGBoost predicted distribution.
+
+    The mean is clipped to [0, 89] and the CRPS is evaluated with the
+    closed-form Gaussian expression (lower is better).
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values.
+    ngb_dist : NGBoost distribution
+        Predicted distribution from `NGBRegressor.pred_dist`, with a `dist`
+        attribute holding the scipy frozen distribution.
+
+    Returns
+    -------
+    np.ndarray of shape (n_samples,)
+        CRPS of each sample.
+
+    """
     dist = ngb_dist.dist
     mean = np.clip(dist.mean(), a_min=0, a_max=89)
     sig = dist.std()
     return np.asarray(ps.crps_gaussian(y_true, mu=mean, sig=sig))
 
 
-def crps_ngboost_score(y_true, ngb_dist) -> float:
-    """Mean CRPS of an NGBoostDistAdapter (lower is better)."""
+def crps_ngboost_score(y_true: ArrayLike, ngb_dist: Any) -> float:
+    """Compute the mean Gaussian CRPS of an NGBoost predicted distribution.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values.
+    ngb_dist : NGBoost distribution
+        Predicted distribution from `NGBRegressor.pred_dist`, with a `dist`
+        attribute holding the scipy frozen distribution.
+
+    Returns
+    -------
+    float
+        CRPS averaged over the samples (lower is better).
+
+    """
     return float(np.mean(crps_ngboost_per_sample(y_true, ngb_dist)))
 
 
-def crps_ngboost_samples(y_true, dist: NGBoostDistAdapter) -> np.ndarray:
+def crps_ngboost_samples(y_true: ArrayLike, dist: NGBoostDistAdapter) -> np.ndarray:
     """Compute the per-sample CRPS of an NGBoostDistAdapter.
 
     The CRPS is closed-form for a Normal distribution (fast), otherwise it
@@ -183,7 +220,7 @@ def crps_ngboost_samples(y_true, dist: NGBoostDistAdapter) -> np.ndarray:
     return scores
 
 
-def crps_ngboost(y_true, dist: NGBoostDistAdapter) -> float:
+def crps_ngboost(y_true: ArrayLike, dist: NGBoostDistAdapter) -> float:
     """Compute the mean CRPS of an NGBoostDistAdapter.
 
     Parameters
@@ -202,7 +239,9 @@ def crps_ngboost(y_true, dist: NGBoostDistAdapter) -> float:
     return float(np.mean(crps_ngboost_samples(y_true, dist)))
 
 
-def marginal_calibration_curve_ngboost(y_true, dist, grid_y):
+def marginal_calibration_curve_ngboost(
+    y_true: ArrayLike, dist: NGBoostDistAdapter, grid_y: ArrayLike
+) -> tuple[np.ndarray, np.ndarray]:
     """Compute the marginal calibration curve of an NGBoostDistAdapter.
 
     The curve is evaluated over a caller-supplied grid, as no fitted grid is
@@ -232,7 +271,7 @@ def marginal_calibration_curve_ngboost(y_true, dist, grid_y):
     return grid_y, empirical_cdf - mean_cdf
 
 
-def pit_diagnostics_ngboost(y_true, dist: NGBoostDistAdapter) -> PitFcstAtObs:
+def pit_diagnostics_ngboost(y_true: ArrayLike, dist: NGBoostDistAdapter) -> PitFcstAtObs:
     """Compute exact PIT diagnostics for an NGBoostDistAdapter.
 
     This uses the same `scores.probability.PitFcstAtObs` machinery as
@@ -261,7 +300,7 @@ def pit_diagnostics_ngboost(y_true, dist: NGBoostDistAdapter) -> PitFcstAtObs:
     return PitFcstAtObs(fcst_da)
 
 
-def cdf_grid_ngboost(dist: NGBoostDistAdapter, grid_y) -> np.ndarray:
+def cdf_grid_ngboost(dist: NGBoostDistAdapter, grid_y: ArrayLike) -> np.ndarray:
     """Evaluate an NGBoostDistAdapter's CDF on a shared grid.
 
     The result is directly analogous to

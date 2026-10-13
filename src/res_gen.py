@@ -1,3 +1,5 @@
+"""Functions generating the figures and tables of the paper."""
+
 import tomllib
 from pathlib import Path
 from typing import Literal

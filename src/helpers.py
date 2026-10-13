@@ -3,10 +3,14 @@ package, region filtering, and LaTeX table generation.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xr
+from medpipe import MedpipeRegressor
 from numpy.typing import ArrayLike
 from ordboost.distributions import ContinuousPredictiveDistribution
 from ordboost.mappers import BaseBinMapper
@@ -24,7 +28,7 @@ from src.helpers_ngboost import (
 )
 
 
-def wrap_ngboost_pred_dist(ngb_pred_dist) -> NGBoostDistAdapter:
+def wrap_ngboost_pred_dist(ngb_pred_dist: Any) -> NGBoostDistAdapter:
     """Wrap the output of `NGBRegressor.pred_dist(X)` in an adapter.
 
     Parameters
@@ -43,13 +47,13 @@ def wrap_ngboost_pred_dist(ngb_pred_dist) -> NGBoostDistAdapter:
 
 
 def compute_metrics(
-    y_true,
-    y_pred,
-    dist,
-    y_train,
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution | None,
+    y_train: ArrayLike,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
-):
+) -> dict[str, tuple[float, float, float]]:
     """Compute the MAE, MAESS, CRPS and CRPSS for one model, with 95% CIs.
 
     The skill scores are computed relative to a baseline: the median of
@@ -91,7 +95,7 @@ def compute_metrics(
         baseline = baseline_distribution(y_train, len(y_true_arr))
         baseline_crps_i = sample_crps(y_true_arr, baseline)
 
-    def statistic(idx):
+    def statistic(idx: np.ndarray) -> np.ndarray:
         y = y_true_arr[idx]
         mae = abs_err[idx].mean()
         maess = 1 - mae / np.abs(y - np.quantile(y, 0.5)).mean()
@@ -112,7 +116,9 @@ def compute_metrics(
     }
 
 
-def sample_crps(y_true, dist) -> np.ndarray:
+def sample_crps(
+    y_true: ArrayLike, dist: NGBoostDistAdapter | ContinuousPredictiveDistribution
+) -> np.ndarray:
     """Compute the per-sample CRPS of a predictive distribution.
 
     Parameters
@@ -143,7 +149,11 @@ def sample_crps(y_true, dist) -> np.ndarray:
     return result.total.values
 
 
-def compute_sample_cdfs(dist, indices, grid_y):
+def compute_sample_cdfs(
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    indices: dict[int, int],
+    grid_y: ArrayLike,
+) -> dict[str, Any]:
     """Extract the CDF at selected indices.
 
     Parameters
@@ -177,7 +187,7 @@ def compute_sample_cdfs(dist, indices, grid_y):
     return cdfs
 
 
-def save_table(latex_str, path: str | Path = "table.txt"):
+def save_table(latex_str: str, path: str | Path = "table.txt") -> None:
     """Write a LaTeX table string to a text file.
 
     Parameters
@@ -192,7 +202,9 @@ def save_table(latex_str, path: str | Path = "table.txt"):
         f.write(latex_str + "\n")
 
 
-def collect_bin_edges(pipes, outcome: str = "DAOH_90") -> dict[str, np.ndarray]:
+def collect_bin_edges(
+    pipes: list[MedpipeRegressor], outcome: str = "DAOH_90"
+) -> dict[str, np.ndarray]:
     """Collect the fitted bin edges of each pipeline, keyed by project name.
 
     Parameters
@@ -214,7 +226,7 @@ def collect_bin_edges(pipes, outcome: str = "DAOH_90") -> dict[str, np.ndarray]:
     }
 
 
-def bin_intervals(edges, y_min: int = 0, y_max: int = 89) -> list[str]:
+def bin_intervals(edges: ArrayLike, y_min: int = 0, y_max: int = 89) -> list[str]:
     """Convert interior bin edges into integer interval strings.
 
     Edges are rounded up with np.ceil. The first bin is [y_min, ceil(edges[0])],
@@ -307,7 +319,7 @@ def pit_histogram(
     lower_da = xr.DataArray(pairs[:, 0], dims=["sample"])
     upper_da = xr.DataArray(pairs[:, 1], dims=["sample"])
 
-    def statistic(idx):
+    def statistic(idx: np.ndarray) -> np.ndarray:
         counts = np.bincount(inverse[idx], minlength=len(pairs)).astype(float)
         boot_pit = PitFcstAtObs(
             upper_da,
@@ -328,13 +340,13 @@ def pit_histogram(
 
 
 def marginal_calibration(
-    y_true,
-    dist,
-    grid_y,
-    mapper,
+    y_true: ArrayLike,
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    grid_y: ArrayLike,
+    mapper: BaseBinMapper | None,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
-):
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Compute the marginal calibration curve for a model, with a 95% CI.
 
     The curve is the difference between the empirical CDF and the mean
@@ -389,7 +401,7 @@ def marginal_calibration(
     contribution = indicator - cdf  # Per-sample eCDF - CDF
     n_samples = len(y_true_arr)
 
-    def statistic(idx):
+    def statistic(idx: np.ndarray) -> np.ndarray:
         counts = np.bincount(idx, minlength=n_samples)
         return counts @ contribution / n_samples
 
@@ -399,12 +411,12 @@ def marginal_calibration(
 
 
 def coverage_sharpness_curve(
-    y_true,
-    dist,
-    coverage_levels,
+    y_true: ArrayLike,
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    coverage_levels: ArrayLike,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
-):
+) -> dict[str, Any]:
     """Compute coverage, sharpness and Winkler score across coverage levels.
 
     The alpha convention matches ordboost.metrics: alpha = 1 - coverage / 100,
@@ -459,7 +471,7 @@ def coverage_sharpness_curve(
 
     per_sample = np.hstack([covered, width, winkler])
 
-    def statistic(idx):
+    def statistic(idx: np.ndarray) -> np.ndarray:
         counts = np.bincount(idx, minlength=n_samples)
         return counts @ per_sample / n_samples
 
@@ -516,7 +528,11 @@ def interval_coverage(
     return float(np.mean(covered))
 
 
-def estimate_patients(dist, ind: dict[int, int], alpha: float) -> dict[int, tuple]:
+def estimate_patients(
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    ind: dict[int, int],
+    alpha: float,
+) -> dict[int, tuple]:
     """Estimate the DAOH and prediction interval of selected patients.
 
     The point prediction is the rounded median of the distribution.
@@ -640,7 +656,7 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
     return results
 
 
-def _format_continuous(series):
+def _format_continuous(series: pd.Series) -> str:
     """Format a series as 'median (Q1--Q3)', ignoring NaNs.
 
     Parameters
@@ -662,7 +678,7 @@ def _format_continuous(series):
     return f"{median:.1f} ({q1:.1f}--{q3:.1f})"
 
 
-def _format_n_pct(n, total):
+def _format_n_pct(n: int, total: int) -> str:
     """Format a count as 'n (pct%)' with a LaTeX-escaped percent sign.
 
     Parameters
@@ -683,7 +699,9 @@ def _format_n_pct(n, total):
     return f"{n:,} ({pct:.1f}\\%)"
 
 
-def _categorical_rows(datasets, col, categories=None):
+def _categorical_rows(
+    datasets: list[pd.DataFrame], col: str, categories: Sequence[Any] | None = None
+) -> list[tuple[str, list[str]]]:
     """Build the table rows for a categorical column across datasets.
 
     Parameters
@@ -723,15 +741,15 @@ def _categorical_rows(datasets, col, categories=None):
 
 
 def generate_patient_characteristics_table(
-    X_train,
-    X_test,
-    continuous_features,
-    categorical_features,
-    feature_labels=None,
-    category_orders=None,
-    caption="Patient characteristics by dataset.",
-    label="tab:patient_chars",
-):
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    continuous_features: list[str],
+    categorical_features: list[str],
+    feature_labels: dict[str, str] | None = None,
+    category_orders: dict[str, Sequence[Any]] | None = None,
+    caption: str = "Patient characteristics by dataset.",
+    label: str = "tab:patient_chars",
+) -> str:
     """Build a LaTeX longtable/booktabs patient characteristics table.
 
     The table compares the train and test splits.
@@ -763,6 +781,7 @@ def generate_patient_characteristics_table(
     -------
     str
         Complete LaTeX longtable source.
+
     """
     feature_labels = feature_labels or {}
     category_orders = category_orders or {}

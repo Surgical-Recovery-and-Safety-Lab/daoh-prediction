@@ -1,3 +1,5 @@
+"""Command line entry point to fit the models and generate the results."""
+
 import argparse
 import sys
 from pathlib import Path

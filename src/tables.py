@@ -1,3 +1,5 @@
+"""Functions generating the LaTeX tables of the paper."""
+
 import tomllib
 from pathlib import Path
 from typing import Literal
@@ -15,7 +17,12 @@ from src.helpers import (
 )
 
 
-def generate_cv_table(results, order, display_labels, save_path):
+def generate_cv_table(
+    results: dict[str, dict[str, tuple[float, float]]],
+    order: list[str],
+    display_labels: dict[str, str],
+    save_path: str | Path,
+) -> None:
     """Generate the LaTeX cross-validation table (mean +/- std) and save it.
 
     Parameters
@@ -163,7 +170,12 @@ def generate_experiment_cv_results(
     )
 
 
-def generate_result_table(results, order, display_labels, save_path):
+def generate_result_table(
+    results: dict[str, dict[str, tuple[float, float, float]]],
+    order: list[str],
+    display_labels: dict[str, str],
+    save_path: str | Path,
+) -> None:
     """Generate the LaTeX metrics table with 95% CIs and save it.
 
     Parameters
@@ -216,8 +228,12 @@ def generate_result_table(results, order, display_labels, save_path):
 
 
 def generate_bin_edges_table(
-    pipes, order, display_labels, save_path, per_line: int = 4
-):
+    pipes: list[MedpipeRegressor],
+    order: list[str],
+    display_labels: dict[str, str],
+    save_path: str | Path,
+    per_line: int = 4,
+) -> None:
     """Generate the LaTeX table of fitted bin edges and save it.
 
     One row per model, listing its integer bin intervals (see `bin_intervals`)
@@ -264,7 +280,13 @@ def generate_bin_edges_table(
     save_table("\n".join(lines), save_path)
 
 
-def generate_prediction_table(results, interval, order, display_labels, save_path):
+def generate_prediction_table(
+    results: dict[str, dict[int, tuple]],
+    interval: float,
+    order: list[str],
+    display_labels: dict[str, str],
+    save_path: str | Path,
+) -> None:
     """Generate the LaTeX table of example patient predictions and save it.
 
     Models without prediction intervals (lower bound of None) are shown as

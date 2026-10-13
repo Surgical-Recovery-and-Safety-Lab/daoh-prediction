@@ -1,8 +1,14 @@
 """Plot functions for conference paper figures."""
 
+from pathlib import Path
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from medpipe.visualisation.themes import MedpipeTheme
+from numpy.typing import ArrayLike
 
 plt.rcParams.update(
     {
@@ -33,15 +39,15 @@ COLOURS = {
 
 
 def plot_binned_vs_continuous(
-    y_cont,
-    y_binned,
-    bin_edges,
-    colors,
+    y_cont: ArrayLike,
+    y_binned: ArrayLike,
+    bin_edges: ArrayLike,
+    colors: list[str],
     n_fine_bins: int = 90,
     density: bool = False,
     log_scale: bool = True,
-    save_path=None,
-):
+    save_path: str | Path | None = None,
+) -> tuple[Figure, np.ndarray]:
     """Plot the continuous target and its binned version.
 
     Both distributions share the DAOH-value x-axis, so they are directly
@@ -137,7 +143,12 @@ def plot_binned_vs_continuous(
     return fig, axes
 
 
-def plot_sample_cdfs(model_results, colors, title, save_path=None):
+def plot_sample_cdfs(
+    model_results: dict[str, Any],
+    colors: list[str],
+    title: str,
+    save_path: str | Path | None = None,
+) -> tuple[Figure, Axes]:
     """Plot example CDFs for different DAOH values.
 
     Parameters
@@ -197,13 +208,13 @@ def plot_sample_cdfs(model_results, colors, title, save_path=None):
 
 
 def plot_pit_histogram_grouped(
-    model_hists,
-    order,
-    display_labels=None,
-    n_bins=20,
-    save_path=None,
-    ax=None,
-):
+    model_hists: dict[str, dict[str, Any]],
+    order: list[str],
+    display_labels: dict[str, str] | None = None,
+    n_bins: int = 20,
+    save_path: str | Path | None = None,
+    ax: Axes | None = None,
+) -> Axes:
     """Plot randomized PIT histograms as grouped bars on a shared axis.
 
     Each PIT bin holds one bar per model. Sized for single-column placement.
@@ -327,8 +338,12 @@ def plot_pit_histogram_grouped(
 
 
 def plot_marginal_calibration(
-    model_results, order, display_labels, save_path=None, ax=None
-):
+    model_results: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
+    order: list[str],
+    display_labels: dict[str, str],
+    save_path: str | Path | None = None,
+    ax: Axes | None = None,
+) -> Axes:
     """Plot the marginal calibration curves.
 
     Parameters
@@ -412,17 +427,17 @@ def plot_marginal_calibration(
 
 
 def _plot_coverage_metric(
-    model_results,
-    key,
-    ylabel,
-    title,
-    order,
-    display_labels=None,
-    save_path=None,
-    scale=1.0,
-    ylim=None,
-    ideal_line=False,
-):
+    model_results: dict[str, dict[str, Any]],
+    key: str,
+    ylabel: str,
+    title: str,
+    order: list[str],
+    display_labels: dict[str, str] | None = None,
+    save_path: str | Path | None = None,
+    scale: float = 1.0,
+    ylim: tuple[float, float] | None = None,
+    ideal_line: bool = False,
+) -> tuple[Figure, Axes]:
     """Plot one metric against the nominal coverage level, with CI error bars.
 
     One line is drawn per model. The models are shifted slightly along the x
@@ -530,7 +545,12 @@ def _plot_coverage_metric(
     return fig, ax
 
 
-def plot_coverage(model_results, order, display_labels=None, save_path=None):
+def plot_coverage(
+    model_results: dict[str, dict[str, Any]],
+    order: list[str],
+    display_labels: dict[str, str] | None = None,
+    save_path: str | Path | None = None,
+) -> tuple[Figure, Axes]:
     """Plot the empirical coverage against the nominal coverage (figure 5).
 
     One line with 95% CI error bars is drawn per model, along with the ideal
@@ -569,7 +589,12 @@ def plot_coverage(model_results, order, display_labels=None, save_path=None):
     )
 
 
-def plot_sharpness(model_results, order, display_labels=None, save_path=None):
+def plot_sharpness(
+    model_results: dict[str, dict[str, Any]],
+    order: list[str],
+    display_labels: dict[str, str] | None = None,
+    save_path: str | Path | None = None,
+) -> tuple[Figure, Axes]:
     """Plot the sharpness across nominal coverage levels (figure 4).
 
     One line with 95% CI error bars is drawn per model.
@@ -604,7 +629,12 @@ def plot_sharpness(model_results, order, display_labels=None, save_path=None):
     )
 
 
-def plot_winkler(model_results, order, display_labels=None, save_path=None):
+def plot_winkler(
+    model_results: dict[str, dict[str, Any]],
+    order: list[str],
+    display_labels: dict[str, str] | None = None,
+    save_path: str | Path | None = None,
+) -> tuple[Figure, Axes]:
     """Plot the Winkler score across nominal coverage levels.
 
     One line with 95% CI error bars is drawn per model.
