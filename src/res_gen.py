@@ -434,10 +434,13 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
 
     results = {
         metric: (-summary[metric]["mean"], summary[metric]["std"])
-        for metric in ("mae", "crps")
+        for metric in ("mae", "crps", "crps_ngboost")
         if metric in summary
     }
     results.setdefault("crps", results["mae"])
+    if "crps_ngboost" in results.keys():
+        results.setdefault("crps", results["crps_ngboost"])
+        results.pop("crps_ngboost")
     return results
 
 
@@ -628,6 +631,8 @@ def load_eval_results(
     }
     if "mae" in results:
         results.setdefault("crps", results["mae"])
+    if "crps_ngboost" in results:
+        results.setdefault("crps", results["crps_ngboost"])
     return results
 
 
