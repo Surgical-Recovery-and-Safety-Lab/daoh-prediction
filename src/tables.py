@@ -12,7 +12,6 @@ from src.helpers import (
     collect_bin_edges,
     generate_patient_characteristics_table,
     load_cv_summary,
-    load_eval_results,
     save_table,
 )
 

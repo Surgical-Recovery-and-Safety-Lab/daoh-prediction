@@ -1,6 +1,5 @@
 """Functions generating the figures and tables of the paper."""
 
-import tomllib
 from pathlib import Path
 from typing import Literal
 
@@ -14,11 +13,9 @@ from src.helpers import (
     compute_sample_cdfs,
     coverage_sharpness_curve,
     estimate_patients,
-    load_cv_summary,
     load_eval_results,
     marginal_calibration,
     pit_histogram,
-    save_table,
     wrap_ngboost_pred_dist,
 )
 from src.plotting import (
@@ -126,12 +123,6 @@ def generate_results(
         "mord": mord_version,
         "ngboost": ngboost_version,
         "ordboost": ordboost_version,
-    }
-    pipes = {
-        "HGBr": hgbr_pipe,
-        "mord": mord_pipe,
-        "ngboost": ngboost_pipe,
-        "ordboost": ordboost_pipe,
     }
     results = {}
     for model, dist in table_models.items():

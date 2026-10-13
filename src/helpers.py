@@ -16,7 +16,6 @@ from ordboost.distributions import ContinuousPredictiveDistribution
 from ordboost.mappers import BaseBinMapper
 from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
-from sklearn.metrics import mean_absolute_error
 
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
@@ -650,7 +649,7 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
         if metric in summary
     }
     results.setdefault("crps", results["mae"])
-    if "crps_ngboost" in results.keys():
+    if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
         results.pop("crps_ngboost")
     return results

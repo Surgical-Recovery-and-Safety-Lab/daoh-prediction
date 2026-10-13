@@ -11,8 +11,8 @@ import numpy as np
 import properscoring as ps
 import xarray as xr
 from numpy.typing import ArrayLike
-from scores.probability import PitFcstAtObs
 from scipy.stats._distn_infrastructure import rv_frozen
+from scores.probability import PitFcstAtObs
 
 
 class NGBoostDistAdapter:
@@ -271,7 +271,9 @@ def marginal_calibration_curve_ngboost(
     return grid_y, empirical_cdf - mean_cdf
 
 
-def pit_diagnostics_ngboost(y_true: ArrayLike, dist: NGBoostDistAdapter) -> PitFcstAtObs:
+def pit_diagnostics_ngboost(
+    y_true: ArrayLike, dist: NGBoostDistAdapter
+) -> PitFcstAtObs:
     """Compute exact PIT diagnostics for an NGBoostDistAdapter.
 
     This uses the same `scores.probability.PitFcstAtObs` machinery as
