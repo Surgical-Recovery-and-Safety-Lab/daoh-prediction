@@ -4,9 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-N_BOOT = 1000
-BOOTSTRAP_SEED = 42
-CI_LEVEL = 0.95
+from src.constants import BOOTSTRAP_SEED, CI_LEVEL, N_BOOT
 
 
 def bootstrap_statistic(

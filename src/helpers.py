@@ -13,12 +13,8 @@ from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
 from sklearn.metrics import mean_absolute_error
 
-from src.bootstrap import (
-    BOOTSTRAP_SEED,
-    N_BOOT,
-    bootstrap_statistic,
-    percentile_interval,
-)
+from src.bootstrap import bootstrap_statistic, percentile_interval
+from src.constants import BOOTSTRAP_SEED, N_BOOT
 from src.helpers_ngboost import (
     NGBoostDistAdapter,
     cdf_grid_ngboost,
