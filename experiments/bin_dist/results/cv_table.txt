@@ -1,0 +1,8 @@
+\begin{tabular}{cccc}
+\toprule
+\textbf{Metrics} & \textbf{Uniform} & \textbf{Quantile} & \textbf{Custom} \\
+\midrule
+MAE (days) & $4.60 \pm 0.02$ & $4.55 \pm 0.02$ & $3.86 \pm 0.02$ \\
+CRPS (days) & $3.00 \pm 0.02$ & $2.76 \pm 0.02$ & $2.63 \pm 0.02$ \\
+\bottomrule
+\end{tabular}

@@ -121,8 +121,8 @@ Age, median (IQR) & 48.0 (32.0--65.0) & 51.0 (34.0--67.0) \\
 \quad False & 2,025,698 (90.5\%) & 313,939 (90.4\%) \\
 \addlinespace
 \multicolumn{3}{l}{\textbf{Prior cancer}} \\
-\quad True & 391,855 (17.5\%) & 72,169 (20.8\%) \\
 \quad False & 1,846,457 (82.5\%) & 275,108 (79.2\%) \\
+\quad True & 391,855 (17.5\%) & 72,169 (20.8\%) \\
 \addlinespace
 \multicolumn{3}{l}{\textbf{ASA score}} \\
 \quad 1.0 & 520,205 (23.2\%) & 53,120 (15.3\%) \\

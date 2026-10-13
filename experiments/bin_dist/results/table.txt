@@ -1,0 +1,10 @@
+\begin{tabular}{cccc}
+\toprule
+\textbf{Metrics} & \textbf{Uniform} & \textbf{Quantile} & \textbf{Custom} \\
+\midrule
+MAE (days) & 4.98 [4.95, 5.00] & 5.28 [5.25, 5.31] & 4.33 [4.31, 4.36] \\
+MAESS & 0.140 [0.136, 0.143] & 0.205 [0.201, 0.209] & 0.246 [0.243, 0.250] \\
+CRPS (days) & 3.08 [3.06, 3.10] & 2.94 [2.92, 2.96] & 2.73 [2.71, 2.75] \\
+CRPSS & 0.228 [0.225, 0.232] & 0.266 [0.262, 0.270] & 0.318 [0.315, 0.322] \\
+\bottomrule
+\end{tabular}

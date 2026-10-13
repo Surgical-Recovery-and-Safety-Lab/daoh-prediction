@@ -1,0 +1,10 @@
+{
+    "outcome": "DAOH_90",
+    "overall": {
+        "mae": {
+            "point_estimate": 5.802598502060315,
+            "ci_lower": 5.7712850260742865,
+            "ci_upper": 5.832779380724897
+        }
+    }
+}
