@@ -9,12 +9,14 @@ from medpipe.visualisation import themes
 from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
+    compute_baseline_crps,
     compute_metrics,
     compute_sample_cdfs,
     coverage_sharpness_curve,
     estimate_patients,
     load_eval_results,
     marginal_calibration,
+    median_mae,
     pit_histogram,
     wrap_ngboost_pred_dist,
 )
@@ -124,6 +126,9 @@ def generate_results(
         "ngboost": ngboost_version,
         "ordboost": ordboost_version,
     }
+    # One baseline CRPS, computed once, shared by the CRPSS of every model
+    baseline_crps = compute_baseline_crps(y_test, y_train)
+
     results = {}
     for model, dist in table_models.items():
         y_true = y_test
@@ -135,9 +140,15 @@ def generate_results(
         else:
             y_pred = y_preds[model]
 
-        # MAE and CRPS come from the evaluation, the skill scores are computed
-        metrics = compute_metrics(y_true, y_pred, dist, y_train)
-        results[model] = load_eval_results(f"artifacts/{model}/{versions[model]}") | {
+        # The skill scores and the CRPS of the distributional models come from
+        # the same computation, so that the CRPS and CRPSS use one CRPS value.
+        # Their MAE is computed on the median.
+        metrics = compute_metrics(y_true, y_pred, dist, baseline_crps)
+        evaluated = load_eval_results(f"artifacts/{model}/{versions[model]}")
+        if dist is not None:
+            evaluated["mae"] = median_mae(y_true, dist)
+            evaluated["crps"] = metrics["crps"]
+        results[model] = evaluated | {
             "maess": metrics["maess"],
             "crpss": metrics["crpss"],
         }
@@ -285,6 +296,8 @@ def generate_experiment_results(
     y_test = pipes[0].data_split.y_test.to_numpy().squeeze()
     y_train = pipes[0].data_split.y_train.to_numpy().squeeze()
 
+    baseline_crps = compute_baseline_crps(y_test, y_train)
+
     models = {}
     mappers = {}
     for i, pipe in enumerate(pipes):
@@ -319,14 +332,18 @@ def generate_experiment_results(
 
     for i, pipe in enumerate(pipes, start=1):
         name = pipe.mp_config.meta.project_name
-        # MAE and CRPS come from the evaluation, the skill scores are computed
+        # The CRPS and the skill scores come from the same computation, and
+        # the MAE is computed on the median
         metrics = compute_metrics(
             y_test,
             np.round(models[name].median()),
             models[name],
-            y_train,
+            baseline_crps,
         )
-        results[name] = load_eval_results(artifacts_dir / f"v{i}") | {
+        evaluated = load_eval_results(artifacts_dir / f"v{i}")
+        evaluated["mae"] = median_mae(y_test, models[name])
+        evaluated["crps"] = metrics["crps"]
+        results[name] = evaluated | {
             "maess": metrics["maess"],
             "crpss": metrics["crpss"],
         }

@@ -49,17 +49,20 @@ def compute_metrics(
     y_true: ArrayLike,
     y_pred: ArrayLike,
     dist: NGBoostDistAdapter | ContinuousPredictiveDistribution | None,
-    y_train: ArrayLike,
+    baseline_crps: ArrayLike,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
 ) -> dict[str, tuple[float, float, float]]:
     """Compute the MAE, MAESS, CRPS and CRPSS for one model, with 95% CIs.
 
     The skill scores are computed relative to a baseline: the median of
-    `y_true` for the MAE, and the baseline distribution built from `y_train`
-    for the CRPS. If the model has no predictive distribution, the CRPS and
-    CRPSS fall back to the MAE and MAESS. The per-sample errors are computed
-    once, and the confidence intervals are percentile intervals over
+    `y_true` for the MAE, and the per-sample CRPS of the baseline
+    distribution (`baseline_crps`) for the CRPS. The same `baseline_crps` must
+    be passed for every model so that all the CRPSS share one reference. If
+    the model has no predictive distribution, it is a point forecast whose
+    CRPS equals its absolute error, so the CRPS is the MAE and the CRPSS is
+    still computed against `baseline_crps`. The per-sample errors are
+    computed once, and the confidence intervals are percentile intervals over
     bootstrap resamples of the test samples.
 
     Parameters
@@ -70,8 +73,9 @@ def compute_metrics(
         Point predictions.
     dist : NGBoostDistAdapter or ContinuousPredictiveDistribution or None
         Predictive distributions. If None, only point metrics are used.
-    y_train : array-like of shape (n_train_samples,)
-        Training targets used to build the baseline distribution.
+    baseline_crps : array-like of shape (n_samples,)
+        Per-sample CRPS of the baseline distribution on the test set, as
+        returned by `compute_baseline_crps`.
     n_boot : int, default=1000
         Number of bootstrap iterations.
     seed : int, default=42
@@ -89,17 +93,14 @@ def compute_metrics(
     y_true_arr = np.asarray(y_true, dtype=float).ravel()
     abs_err = np.abs(y_true_arr - np.asarray(y_pred, dtype=float).ravel())
 
-    if dist is not None:
-        crps_i = sample_crps(y_true_arr, dist)
-        baseline = baseline_distribution(y_train, len(y_true_arr))
-        baseline_crps_i = sample_crps(y_true_arr, baseline)
+    baseline_crps_i = np.asarray(baseline_crps, dtype=float).ravel()
+    # The CRPS of a point forecast is its absolute error
+    crps_i = abs_err if dist is None else sample_crps(y_true_arr, dist)
 
     def statistic(idx: np.ndarray) -> np.ndarray:
         y = y_true_arr[idx]
         mae = abs_err[idx].mean()
         maess = 1 - mae / np.abs(y - np.quantile(y, 0.5)).mean()
-        if dist is None:
-            return np.array([mae, maess, mae, maess])
         crps = crps_i[idx].mean()
         crpss = 1 - crps / baseline_crps_i[idx].mean()
         return np.array([mae, maess, crps, crpss])
@@ -519,7 +520,8 @@ def coverage_sharpness_curve(
 
     The alpha convention matches ordboost.metrics: alpha = 1 - coverage / 100,
     e.g. coverage=90 gives alpha=0.10. The per-sample values are computed
-    once for every level, and the 95% CIs are percentile intervals over
+    once for every level, from the integer intervals rounded up (see
+    `ceil_interval`), and the 95% CIs are percentile intervals over
     bootstrap resamples of the test samples.
 
     Parameters
@@ -556,10 +558,8 @@ def coverage_sharpness_curve(
     winkler = np.empty((n_samples, n_levels))
 
     for i, alpha in enumerate(alphas):
-        lower, upper = dist.interval(alpha=alpha)
-        covered[:, i] = (y_true_arr >= np.round(lower)) & (
-            y_true_arr <= np.round(upper)
-        )
+        lower, upper = ceil_interval(dist, alpha)
+        covered[:, i] = (y_true_arr >= lower) & (y_true_arr <= upper)
         width[:, i] = upper - lower
         winkler[:, i] = (
             width[:, i]
@@ -617,11 +617,9 @@ def interval_coverage(
         raise ValueError("Significance level 'alpha' must lie within (0.0, 1.0).")
 
     y_true_arr = np.asarray(y_true, dtype=float)
-    lower, upper = dist.interval(alpha=alpha)
+    lower, upper = ceil_interval(dist, alpha)
 
-    covered = (
-        (y_true_arr >= np.round(lower)) & (y_true_arr <= np.round(upper))
-    ).astype(float)
+    covered = ((y_true_arr >= lower) & (y_true_arr <= upper)).astype(float)
 
     return float(np.mean(covered))
 
@@ -633,7 +631,8 @@ def estimate_patients(
 ) -> dict[int, tuple]:
     """Estimate the DAOH and prediction interval of selected patients.
 
-    The point prediction is the rounded median of the distribution.
+    The point prediction is the rounded median of the distribution and the
+    interval endpoints are rounded up (see `ceil_interval`).
 
     Parameters
     ----------
@@ -654,14 +653,14 @@ def estimate_patients(
     """
     predictions = dist.median()
     results = {}
-    l_bound, u_bound = dist.interval(alpha)
+    l_bound, u_bound = ceil_interval(dist, alpha)
 
     for index, daoh in ind.items():
         results[index] = (
             daoh,
             np.round(predictions[index]),
-            np.round(l_bound[index]),
-            np.round(u_bound[index]),
+            l_bound[index],
+            u_bound[index],
         )
 
     return results
@@ -704,10 +703,10 @@ def load_eval_results(
         metric: (res["point_estimate"], res["ci_lower"], res["ci_upper"])
         for metric, res in overall.items()
     }
-    if "mae" in results:
-        results.setdefault("crps", results["mae"])
     if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
+    if "mae" in results:
+        results.setdefault("crps", results["mae"])
     return results
 
 
