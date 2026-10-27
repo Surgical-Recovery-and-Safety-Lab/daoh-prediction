@@ -11,11 +11,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from medpipe import MedpipeRegressor
+from medpipe.metrics import ici_score
 from numpy.typing import ArrayLike
 from ordboost.distributions import ContinuousPredictiveDistribution
 from ordboost.mappers import BaseBinMapper
 from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
+from sklearn.metrics import roc_auc_score
 
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
@@ -110,6 +112,91 @@ def compute_metrics(
     lower, upper = percentile_interval(draws)
 
     names = ["mae", "maess", "crps", "crpss"]
+    return {
+        name: (float(estimates[i]), float(lower[i]), float(upper[i]))
+        for i, name in enumerate(names)
+    }
+
+
+def binarise_daoh(y: ArrayLike, threshold: int) -> np.ndarray:
+    """Binarise DAOH into the classification event for a threshold.
+
+    The event is DAOH < threshold, except for a threshold of 0, where
+    DAOH < 0 is impossible and the event is DAOH = 0.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        DAOH values.
+    threshold : int
+        Classification threshold.
+
+    Returns
+    -------
+    np.ndarray of bool of shape (n_samples,)
+        True where the event occurs.
+
+    """
+    y_arr = np.asarray(y)
+    return y_arr == 0 if threshold == 0 else y_arr < threshold
+
+
+def compute_classifier_metrics(
+    y_true: ArrayLike,
+    y_prob: ArrayLike,
+    ref_prob: float,
+    n_boot: int = N_BOOT,
+    seed: int = BOOTSTRAP_SEED,
+) -> dict[str, tuple[float, float, float]]:
+    """Compute the AUROC, ICI, Brier score and Brier skill score, with 95% CIs.
+
+    The Brier skill score is relative to a reference model that predicts the
+    constant probability `ref_prob` for every sample (the event prevalence in
+    the training data). The confidence intervals are percentile intervals over
+    bootstrap resamples of the test samples. Resamples where a metric is
+    undefined (e.g. a single class for the AUROC) are ignored for that metric.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        Binary test labels.
+    y_prob : array-like of shape (n_samples,)
+        Predicted probability of the positive class.
+    ref_prob : float
+        Constant probability predicted by the reference model.
+    n_boot : int, default=1000
+        Number of bootstrap iterations.
+    seed : int, default=42
+        Seed of the bootstrap random generator. The same seed gives the same
+        resamples for every model.
+
+    Returns
+    -------
+    dict[str, tuple[float, float, float]]
+        Dictionary with keys "auroc", "ici", "brier" and "bss". Each value is
+        a tuple (estimate, lower, upper) with the estimate computed on the
+        full sample.
+
+    """
+    y = np.asarray(y_true, dtype=int).ravel()
+    p = np.asarray(y_prob, dtype=float).ravel()
+
+    def statistic(idx: np.ndarray) -> np.ndarray:
+        y_b, p_b = y[idx], p[idx]
+        if y_b.min() == y_b.max():  # AUROC and ICI are undefined
+            auroc = ici = np.nan
+        else:
+            auroc = roc_auc_score(y_b, p_b)
+            ici = ici_score(y_b, p_b)
+        brier = np.mean((p_b - y_b) ** 2)
+        brier_ref = np.mean((ref_prob - y_b) ** 2)
+        return np.array([auroc, ici, brier, 1 - brier / brier_ref])
+
+    estimates = statistic(np.arange(len(y)))
+    draws = bootstrap_statistic(statistic, len(y), n_boot, seed)
+    lower, upper = percentile_interval(draws)
+
+    names = ["auroc", "ici", "brier", "bss"]
     return {
         name: (float(estimates[i]), float(lower[i]), float(upper[i]))
         for i, name in enumerate(names)
