@@ -181,8 +181,10 @@ def generate_result_table(
     ----------
     results : dict[str, dict[str, tuple[float, float, float]]]
         Model key -> metrics (keys "mae", "maess", "crps" and "crpss"), each
-        as (estimate, lower, upper). MAE and CRPS come from
-        `load_eval_results` and the skill scores from `compute_metrics`. A
+        as (estimate, lower, upper). The CRPS and skill
+        scores come from `compute_metrics`, and the MAE of the distributional
+        models from `median_mae`. The MAE of the point-forecast models comes
+        from `load_eval_results`. A
         metric row is only written if every model in `order` has it.
     order : list[str]
         Model keys controlling the column order.
