@@ -118,7 +118,7 @@ def run_classification(
         pipe = MedpipeClassifier(
             config=config_file, base_artifact_dir=src_dir / "artifacts"
         )
-        X_train, y_train, _, _, X_test, y_test, groups = pipe.prepare_data()
+        X_train, y_train, _, _, _X_test, _y_test, groups = pipe.prepare_data()
         y_train = binarise_daoh(y_train, THRESHOLDS[i])  # Binarise the data
         pipe.fit(X_train, y_train, groups)
 
