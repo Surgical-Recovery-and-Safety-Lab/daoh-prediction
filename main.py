@@ -5,12 +5,18 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from medpipe import MedpipeRegressor, MetricRegistry, ModelRegistry
+from medpipe import MedpipeClassifier, MedpipeRegressor, MetricRegistry, ModelRegistry
 from medpipe.metrics import MetricSpec
 from mord import OrdinalRidge
 
+from src.constants import THRESHOLDS
+from src.helpers import binarise_daoh
 from src.helpers_ngboost import crps_ngboost_per_sample, crps_ngboost_score
-from src.res_gen import generate_experiment_results, generate_results
+from src.res_gen import (
+    generate_classifier_results,
+    generate_experiment_results,
+    generate_results,
+)
 
 
 def run_model(model: Literal["ordboost", "ngboost", "HGBr", "mord"]) -> None:
@@ -73,6 +79,48 @@ def run_experiment(
             config=config_file, base_artifact_dir=src_dir / "artifacts"
         )
         pipe.run()
+
+
+def run_classification(
+    experiment: Literal["classification"],
+    run_flag: Literal["run", "results"],
+) -> None:
+    """Run the classification experiment.
+
+    Parameters
+    ----------
+    experiment : str, {"classification"}
+        Selected experiment to run.
+    run_flag : str, {"run", "results"}
+        Flag to select how to run the experiment. The `run` mode fits all the
+        models in the experiment. The `results` mode generates the results, if
+        the models have been fitted first.
+
+    """
+    src_dir = Path(f"experiments/{experiment}")
+    config_dir = src_dir / "config"  # Configuration file directory
+    pattern = "*.toml"  # Get only .toml files
+
+    config_files = sorted(p for p in config_dir.glob(pattern) if p.is_file())
+
+    if run_flag == "results":
+        # Make directories to save results in case they don't exist
+        plot_path = src_dir / "plots"
+        plot_path.mkdir(exist_ok=True)
+        res_path = src_dir / "results"
+        res_path.mkdir(exist_ok=True)
+
+        generate_classifier_results()
+        sys.exit()
+
+    for i, config_file in enumerate(config_files):
+        print(f"Configuration file: {config_file}")
+        pipe = MedpipeClassifier(
+            config=config_file, base_artifact_dir=src_dir / "artifacts"
+        )
+        X_train, y_train, _, _, X_test, y_test, groups = pipe.prepare_data()
+        y_train = binarise_daoh(y_train, THRESHOLDS[i])  # Binarise the data
+        pipe.fit(X_train, y_train, groups)
 
 
 if __name__ == "__main__":
@@ -139,7 +187,7 @@ if __name__ == "__main__":
     )
     exp_parser.add_argument(
         "experiment",
-        choices=["n_bins", "bin_dist", "mappers"],
+        choices=["n_bins", "bin_dist", "mappers", "classification"],
         help="experiment to run",
     )
     exp_group = exp_parser.add_mutually_exclusive_group(required=True)
@@ -186,4 +234,8 @@ if __name__ == "__main__":
             run_flag = "run"
         else:
             run_flag = "results"
-        run_experiment(experiment=args.experiment, run_flag=run_flag)
+
+        if args.experiment != "classification":
+            run_experiment(experiment=args.experiment, run_flag=run_flag)
+        else:
+            run_classification(experiment=args.experiment, run_flag=run_flag)
