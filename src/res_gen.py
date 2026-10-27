@@ -4,12 +4,14 @@ from pathlib import Path
 from typing import Literal
 
 import numpy as np
-from medpipe import MedpipeRegressor
+from medpipe import MedpipeClassifier, MedpipeRegressor
 from medpipe.visualisation import themes
 from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
     compute_baseline_crps,
+    binarise_daoh,
+    compute_classifier_metrics,
     compute_metrics,
     compute_sample_cdfs,
     coverage_sharpness_curve,
@@ -31,6 +33,7 @@ from src.plotting import (
 )
 from src.tables import (
     generate_bin_edges_table,
+    generate_classifier_table,
     generate_cv_results,
     generate_data_table,
     generate_experiment_cv_results,
@@ -40,7 +43,12 @@ from src.tables import (
 
 THEME = themes.MedpipeTheme()
 
-from src.constants import BIN_DIST_EXP_ORDER, MAPPERS_EXP_ORDER, N_BINS_EXP_ORDER
+from src.constants import (
+    BIN_DIST_EXP_ORDER,
+    MAPPERS_EXP_ORDER,
+    N_BINS_EXP_ORDER,
+    THRESHOLDS,
+)
 
 
 def generate_results(
@@ -414,6 +422,104 @@ def generate_experiment_results(
     )
 
     generate_experiment_cv_results(experiment)
+
+
+def generate_classifier_results(
+    ordboost_version: str = "v1",
+    ngboost_version: str = "v1",
+) -> None:
+    """Classifier experiment result generating function.
+
+    For each threshold, compares the HGB classifier trained on
+    DAOH < threshold with the NGBoost and OrdBoost models, using their
+    predicted P(DAOH < threshold), on the test set. For a threshold of 0 the
+    event is DAOH = 0 (see `binarise_daoh`). One table per threshold
+    is saved in experiments/classification/results/table_{threshold}.txt.
+
+    The classifiers are loaded from experiments/classification/artifacts/v{i},
+    where i is the 1-based position of the threshold in `THRESHOLDS`, i.e. the
+    order in which `run_classification` fits them.
+
+    Parameters
+    ----------
+    ordboost_version : str, default="v1"
+        Version of the ordboost model to load.
+    ngboost_version : str, default="v1"
+        Version of the ngboost model to load.
+
+    Raises
+    ------
+    FileNotFoundError
+        If a classifier artifact directory is not found.
+
+    """
+    src_dir = Path("experiments/classification")
+    artifacts_dir = src_dir / "artifacts"
+    (src_dir / "results").mkdir(parents=True, exist_ok=True)
+
+    ordboost_pipe = MedpipeRegressor.load(f"artifacts/ordboost/{ordboost_version}")
+    ngboost_pipe = MedpipeRegressor.load(f"artifacts/ngboost/{ngboost_version}")
+    ordboost_pipe._orchestrator.prepare_data()
+    ngboost_pipe._orchestrator.prepare_data()
+
+    ordboost_dist = ordboost_pipe.models["DAOH_90"].predict_dist(
+        ordboost_pipe.data_split.X_test
+    )
+    ngboost_dist = wrap_ngboost_pred_dist(
+        ngboost_pipe.models["DAOH_90"].predict_dist(ngboost_pipe.data_split.X_test)
+    )
+    y_test = ordboost_pipe.data_split.y_test.to_numpy().squeeze()
+    y_train = ordboost_pipe.data_split.y_train.to_numpy().squeeze()
+
+    order = ["HGBc", "ngboost", "ordboost"]
+    display_labels = {
+        "HGBc": "HGBclassifier",
+        "ngboost": "NGBoost",
+        "ordboost": "OrdBoost",
+    }
+
+    for i, threshold in enumerate(THRESHOLDS, start=1):
+        run_dir = artifacts_dir / f"v{i}"
+        if not run_dir.is_dir():
+            msg = f"Missing directory: {run_dir}. Run the classification experiment first."
+            raise FileNotFoundError(msg)
+
+        clf_pipe = MedpipeClassifier.load(run_dir)
+        clf_pipe._orchestrator.prepare_data()
+        outcome = next(iter(clf_pipe.models))
+        y_clf = clf_pipe.data_split.y_test.to_numpy().squeeze()
+        if not np.array_equal(y_clf, y_test):
+            msg = f"The test set of {run_dir} differs from the regressors' test set."
+            raise ValueError(msg)
+
+        y_bin = binarise_daoh(y_test, threshold)
+        if y_bin.min() == y_bin.max():
+            print(f"Skipping threshold {threshold}: a single class in the test set")
+            continue
+
+        # P(event) of each model; for the DAOH = 0 event, P(DAOH <= 0.5)
+        upper = 0.5 if threshold == 0 else threshold
+        probs = {
+            "HGBc": np.asarray(
+                clf_pipe.predict_proba(clf_pipe.data_split.X_test, outcome=outcome)
+            )[:, 1],
+            "ngboost": ngboost_dist.cdf(upper),
+            "ordboost": ordboost_dist.cdf(upper),
+        }
+        # Reference model: the training prevalence for every sample
+        ref_prob = float(np.mean(binarise_daoh(y_train, threshold)))
+
+        results = {
+            model: compute_classifier_metrics(y_bin, prob, ref_prob)
+            for model, prob in probs.items()
+        }
+
+        generate_classifier_table(
+            results,
+            order=order,
+            display_labels=display_labels,
+            save_path=src_dir / f"results/table_{threshold}.txt",
+        )
 
 
 def generate_data_distribution(
