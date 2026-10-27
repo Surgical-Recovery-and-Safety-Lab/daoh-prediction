@@ -1,16 +1,17 @@
 """Functions generating the figures and tables of the paper."""
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
+import matplotlib.pyplot as plt
 import numpy as np
 from medpipe import MedpipeClassifier, MedpipeRegressor
 from medpipe.visualisation import themes
 from ordboost.mappers import BaseBinMapper
 
 from src.helpers import (
-    compute_baseline_crps,
     binarise_daoh,
+    compute_baseline_crps,
     compute_classifier_metrics,
     compute_metrics,
     compute_sample_cdfs,
@@ -27,6 +28,7 @@ from src.plotting import (
     plot_coverage,
     plot_marginal_calibration,
     plot_pit_histogram_grouped,
+    plot_predicted_distribution,
     plot_sample_cdfs,
     plot_sharpness,
     plot_winkler,
@@ -116,6 +118,23 @@ def generate_results(
         "mord": "OrdinalRidge",
     }
     mapper = ordboost_pipe.models["DAOH_90"]["regressor"].mapper_
+
+    # Generate the distribution of the test set predictions of each model
+    generate_prediction_distributions(
+        {
+            "ngboost": ngboost_dist,
+            "ordboost": ordboost_dist,
+            "HGBr": y_preds["HGBr"],
+            "mord": y_preds["mord"],
+        },
+        pipes={
+            "ngboost": ngboost_pipe,
+            "ordboost": ordboost_pipe,
+            "HGBr": hgbr_pipe,
+            "mord": mord_pipe,
+        },
+        display_labels=display_labels,
+    )
 
     # Generate data tables
     generate_data_table(ordboost_pipe)
@@ -520,6 +539,42 @@ def generate_classifier_results(
             display_labels=display_labels,
             save_path=src_dir / f"results/table_{threshold}.txt",
         )
+
+
+def generate_prediction_distributions(
+    predictions: dict[str, Any],
+    pipes: dict[str, MedpipeRegressor],
+    display_labels: dict[str, str],
+) -> None:
+    """Plot the distribution of the test set predictions, one figure per model.
+
+    Each figure is saved in the plots folder of the model's artifact. The
+    point prediction of the distributional models is their rounded median,
+    and that of the other models is the output of their `predict`.
+
+    Parameters
+    ----------
+    predictions : dict[str, Any]
+        Model key -> predictive distribution (NGBoost and OrdBoost, with a
+        `median` method) or array of point predictions.
+    pipes : dict[str, MedpipeRegressor]
+        Model key -> fitted pipeline, used for the save directory.
+    display_labels : dict[str, str]
+        Model key -> display string.
+
+    """
+    for model, pred in predictions.items():
+        y_pred = np.round(pred.median()) if hasattr(pred, "median") else pred
+
+        plot_dir = pipes[model].run_dir / "plots"
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        fig, _ = plot_predicted_distribution(
+            y_pred,
+            color=THEME.palette[0],
+            title=display_labels[model],
+            save_path=plot_dir / "predicted_distribution.png",
+        )
+        plt.close(fig)
 
 
 def generate_data_distribution(
