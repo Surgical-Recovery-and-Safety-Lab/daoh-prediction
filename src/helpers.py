@@ -115,6 +115,105 @@ def compute_metrics(
     }
 
 
+def median_mae(
+    y_true: ArrayLike,
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    n_boot: int = N_BOOT,
+    seed: int = BOOTSTRAP_SEED,
+) -> tuple[float, float, float]:
+    """Compute the MAE of the median prediction, with a 95% CI.
+
+    The point prediction is the median of each predictive distribution
+    (`dist.median()`), rounded to the nearest integer day, rather than the
+    mean returned by the model's `predict`. The confidence interval is the
+    percentile interval over bootstrap resamples of the test samples.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values.
+    dist : NGBoostDistAdapter or ContinuousPredictiveDistribution
+        Predictive distributions.
+    n_boot : int, default=1000
+        Number of bootstrap iterations.
+    seed : int, default=42
+        Seed of the bootstrap random generator. The same seed gives the same
+        resamples for every model.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        The MAE as (estimate, lower, upper), with the estimate computed on
+        the full sample.
+
+    """
+    y_true_arr = np.asarray(y_true, dtype=float).ravel()
+    abs_err = np.abs(y_true_arr - np.round(dist.median()))
+
+    def statistic(idx: np.ndarray) -> float:
+        return abs_err[idx].mean()
+
+    draws = bootstrap_statistic(statistic, len(y_true_arr), n_boot, seed)
+    lower, upper = percentile_interval(draws)
+    return float(abs_err.mean()), float(lower), float(upper)
+
+
+def ceil_interval(
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    alpha: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute the central prediction interval rounded up to integer days.
+
+    Both endpoints are rounded up with `np.ceil`. Coverage, width and the
+    Winkler score must all be computed from this interval, so that they are
+    consistent for an integer-valued outcome.
+
+    Parameters
+    ----------
+    dist : NGBoostDistAdapter or ContinuousPredictiveDistribution
+        Predictive distributions.
+    alpha : float
+        Tail significance level (e.g. 0.05 for a 95% interval).
+
+    Returns
+    -------
+    lower : np.ndarray of shape (n_samples,)
+        Lower bounds rounded up.
+    upper : np.ndarray of shape (n_samples,)
+        Upper bounds rounded up.
+
+    """
+    lower, upper = dist.interval(alpha=alpha)
+    # "+ 0.0" turns -0.0 into 0.0
+    return np.ceil(lower) + 0.0, np.ceil(upper) + 0.0
+
+
+def compute_baseline_crps(y_true: ArrayLike, y_train: ArrayLike) -> np.ndarray:
+    """Compute the per-sample CRPS of the baseline distribution.
+
+    The baseline is the unconditional empirical distribution of the training
+    targets, built with `ordboost.metrics.baseline_distribution`. It is
+    computed once and shared by all the models, so that every CRPSS uses the
+    same reference.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values of the test set.
+    y_train : array-like of shape (n_train_samples,)
+        Training targets used to build the baseline distribution.
+
+    Returns
+    -------
+    np.ndarray of shape (n_samples,)
+        CRPS of the baseline distribution for each test sample.
+
+    """
+    y_true_arr = np.asarray(y_true, dtype=float).ravel()
+    baseline = baseline_distribution(y_train, len(y_true_arr))
+    return sample_crps(y_true_arr, baseline)
+
+
 def sample_crps(
     y_true: ArrayLike, dist: NGBoostDistAdapter | ContinuousPredictiveDistribution
 ) -> np.ndarray:
