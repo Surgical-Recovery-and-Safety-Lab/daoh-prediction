@@ -11,11 +11,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from medpipe import MedpipeRegressor
+from medpipe.metrics import ici_score
 from numpy.typing import ArrayLike
 from ordboost.distributions import ContinuousPredictiveDistribution
 from ordboost.mappers import BaseBinMapper
 from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
+from sklearn.metrics import roc_auc_score
 
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
@@ -49,17 +51,20 @@ def compute_metrics(
     y_true: ArrayLike,
     y_pred: ArrayLike,
     dist: NGBoostDistAdapter | ContinuousPredictiveDistribution | None,
-    y_train: ArrayLike,
+    baseline_crps: ArrayLike,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
 ) -> dict[str, tuple[float, float, float]]:
     """Compute the MAE, MAESS, CRPS and CRPSS for one model, with 95% CIs.
 
     The skill scores are computed relative to a baseline: the median of
-    `y_true` for the MAE, and the baseline distribution built from `y_train`
-    for the CRPS. If the model has no predictive distribution, the CRPS and
-    CRPSS fall back to the MAE and MAESS. The per-sample errors are computed
-    once, and the confidence intervals are percentile intervals over
+    `y_true` for the MAE, and the per-sample CRPS of the baseline
+    distribution (`baseline_crps`) for the CRPS. The same `baseline_crps` must
+    be passed for every model so that all the CRPSS share one reference. If
+    the model has no predictive distribution, it is a point forecast whose
+    CRPS equals its absolute error, so the CRPS is the MAE and the CRPSS is
+    still computed against `baseline_crps`. The per-sample errors are
+    computed once, and the confidence intervals are percentile intervals over
     bootstrap resamples of the test samples.
 
     Parameters
@@ -70,8 +75,9 @@ def compute_metrics(
         Point predictions.
     dist : NGBoostDistAdapter or ContinuousPredictiveDistribution or None
         Predictive distributions. If None, only point metrics are used.
-    y_train : array-like of shape (n_train_samples,)
-        Training targets used to build the baseline distribution.
+    baseline_crps : array-like of shape (n_samples,)
+        Per-sample CRPS of the baseline distribution on the test set, as
+        returned by `compute_baseline_crps`.
     n_boot : int, default=1000
         Number of bootstrap iterations.
     seed : int, default=42
@@ -89,17 +95,14 @@ def compute_metrics(
     y_true_arr = np.asarray(y_true, dtype=float).ravel()
     abs_err = np.abs(y_true_arr - np.asarray(y_pred, dtype=float).ravel())
 
-    if dist is not None:
-        crps_i = sample_crps(y_true_arr, dist)
-        baseline = baseline_distribution(y_train, len(y_true_arr))
-        baseline_crps_i = sample_crps(y_true_arr, baseline)
+    baseline_crps_i = np.asarray(baseline_crps, dtype=float).ravel()
+    # The CRPS of a point forecast is its absolute error
+    crps_i = abs_err if dist is None else sample_crps(y_true_arr, dist)
 
     def statistic(idx: np.ndarray) -> np.ndarray:
         y = y_true_arr[idx]
         mae = abs_err[idx].mean()
         maess = 1 - mae / np.abs(y - np.quantile(y, 0.5)).mean()
-        if dist is None:
-            return np.array([mae, maess, mae, maess])
         crps = crps_i[idx].mean()
         crpss = 1 - crps / baseline_crps_i[idx].mean()
         return np.array([mae, maess, crps, crpss])
@@ -113,6 +116,190 @@ def compute_metrics(
         name: (float(estimates[i]), float(lower[i]), float(upper[i]))
         for i, name in enumerate(names)
     }
+
+
+def binarise_daoh(y: ArrayLike, threshold: int) -> np.ndarray:
+    """Binarise DAOH into the classification event for a threshold.
+
+    The event is DAOH < threshold, except for a threshold of 0, where
+    DAOH < 0 is impossible and the event is DAOH = 0.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        DAOH values.
+    threshold : int
+        Classification threshold.
+
+    Returns
+    -------
+    np.ndarray of bool of shape (n_samples,)
+        True where the event occurs.
+
+    """
+    y_arr = np.asarray(y)
+    return y_arr == 0 if threshold == 0 else y_arr < threshold
+
+
+def compute_classifier_metrics(
+    y_true: ArrayLike,
+    y_prob: ArrayLike,
+    ref_prob: float,
+    n_boot: int = N_BOOT,
+    seed: int = BOOTSTRAP_SEED,
+) -> dict[str, tuple[float, float, float]]:
+    """Compute the AUROC, ICI, Brier score and Brier skill score, with 95% CIs.
+
+    The Brier skill score is relative to a reference model that predicts the
+    constant probability `ref_prob` for every sample (the event prevalence in
+    the training data). The confidence intervals are percentile intervals over
+    bootstrap resamples of the test samples. Resamples where a metric is
+    undefined (e.g. a single class for the AUROC) are ignored for that metric.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        Binary test labels.
+    y_prob : array-like of shape (n_samples,)
+        Predicted probability of the positive class.
+    ref_prob : float
+        Constant probability predicted by the reference model.
+    n_boot : int, default=1000
+        Number of bootstrap iterations.
+    seed : int, default=42
+        Seed of the bootstrap random generator. The same seed gives the same
+        resamples for every model.
+
+    Returns
+    -------
+    dict[str, tuple[float, float, float]]
+        Dictionary with keys "auroc", "ici", "brier" and "bss". Each value is
+        a tuple (estimate, lower, upper) with the estimate computed on the
+        full sample.
+
+    """
+    y = np.asarray(y_true, dtype=int).ravel()
+    p = np.asarray(y_prob, dtype=float).ravel()
+
+    def statistic(idx: np.ndarray) -> np.ndarray:
+        y_b, p_b = y[idx], p[idx]
+        if y_b.min() == y_b.max():  # AUROC and ICI are undefined
+            auroc = ici = np.nan
+        else:
+            auroc = roc_auc_score(y_b, p_b)
+            ici = ici_score(y_b, p_b)
+        brier = np.mean((p_b - y_b) ** 2)
+        brier_ref = np.mean((ref_prob - y_b) ** 2)
+        return np.array([auroc, ici, brier, 1 - brier / brier_ref])
+
+    estimates = statistic(np.arange(len(y)))
+    draws = bootstrap_statistic(statistic, len(y), n_boot, seed)
+    lower, upper = percentile_interval(draws)
+
+    names = ["auroc", "ici", "brier", "bss"]
+    return {
+        name: (float(estimates[i]), float(lower[i]), float(upper[i]))
+        for i, name in enumerate(names)
+    }
+
+
+def median_mae(
+    y_true: ArrayLike,
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    n_boot: int = N_BOOT,
+    seed: int = BOOTSTRAP_SEED,
+) -> tuple[float, float, float]:
+    """Compute the MAE of the median prediction, with a 95% CI.
+
+    The point prediction is the median of each predictive distribution
+    (`dist.median()`), rounded to the nearest integer day, rather than the
+    mean returned by the model's `predict`. The confidence interval is the
+    percentile interval over bootstrap resamples of the test samples.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values.
+    dist : NGBoostDistAdapter or ContinuousPredictiveDistribution
+        Predictive distributions.
+    n_boot : int, default=1000
+        Number of bootstrap iterations.
+    seed : int, default=42
+        Seed of the bootstrap random generator. The same seed gives the same
+        resamples for every model.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        The MAE as (estimate, lower, upper), with the estimate computed on
+        the full sample.
+
+    """
+    y_true_arr = np.asarray(y_true, dtype=float).ravel()
+    abs_err = np.abs(y_true_arr - np.round(dist.median()))
+
+    def statistic(idx: np.ndarray) -> float:
+        return abs_err[idx].mean()
+
+    draws = bootstrap_statistic(statistic, len(y_true_arr), n_boot, seed)
+    lower, upper = percentile_interval(draws)
+    return float(abs_err.mean()), float(lower), float(upper)
+
+
+def ceil_interval(
+    dist: NGBoostDistAdapter | ContinuousPredictiveDistribution,
+    alpha: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute the central prediction interval rounded up to integer days.
+
+    Both endpoints are rounded up with `np.ceil`. Coverage, width and the
+    Winkler score must all be computed from this interval, so that they are
+    consistent for an integer-valued outcome.
+
+    Parameters
+    ----------
+    dist : NGBoostDistAdapter or ContinuousPredictiveDistribution
+        Predictive distributions.
+    alpha : float
+        Tail significance level (e.g. 0.05 for a 95% interval).
+
+    Returns
+    -------
+    lower : np.ndarray of shape (n_samples,)
+        Lower bounds rounded up.
+    upper : np.ndarray of shape (n_samples,)
+        Upper bounds rounded up.
+
+    """
+    lower, upper = dist.interval(alpha=alpha)
+    # "+ 0.0" turns -0.0 into 0.0
+    return np.ceil(lower) + 0.0, np.ceil(upper) + 0.0
+
+
+def compute_baseline_crps(y_true: ArrayLike, y_train: ArrayLike) -> np.ndarray:
+    """Compute the per-sample CRPS of the baseline distribution.
+
+    The baseline is the unconditional empirical distribution of the training
+    targets, built with `ordboost.metrics.baseline_distribution`. It is
+    computed once and shared by all the models, so that every CRPSS uses the
+    same reference.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values of the test set.
+    y_train : array-like of shape (n_train_samples,)
+        Training targets used to build the baseline distribution.
+
+    Returns
+    -------
+    np.ndarray of shape (n_samples,)
+        CRPS of the baseline distribution for each test sample.
+
+    """
+    y_true_arr = np.asarray(y_true, dtype=float).ravel()
+    baseline = baseline_distribution(y_train, len(y_true_arr))
+    return sample_crps(y_true_arr, baseline)
 
 
 def sample_crps(
@@ -420,7 +607,8 @@ def coverage_sharpness_curve(
 
     The alpha convention matches ordboost.metrics: alpha = 1 - coverage / 100,
     e.g. coverage=90 gives alpha=0.10. The per-sample values are computed
-    once for every level, and the 95% CIs are percentile intervals over
+    once for every level, from the integer intervals rounded up (see
+    `ceil_interval`), and the 95% CIs are percentile intervals over
     bootstrap resamples of the test samples.
 
     Parameters
@@ -457,10 +645,8 @@ def coverage_sharpness_curve(
     winkler = np.empty((n_samples, n_levels))
 
     for i, alpha in enumerate(alphas):
-        lower, upper = dist.interval(alpha=alpha)
-        covered[:, i] = (y_true_arr >= np.round(lower)) & (
-            y_true_arr <= np.round(upper)
-        )
+        lower, upper = ceil_interval(dist, alpha)
+        covered[:, i] = (y_true_arr >= lower) & (y_true_arr <= upper)
         width[:, i] = upper - lower
         winkler[:, i] = (
             width[:, i]
@@ -518,11 +704,9 @@ def interval_coverage(
         raise ValueError("Significance level 'alpha' must lie within (0.0, 1.0).")
 
     y_true_arr = np.asarray(y_true, dtype=float)
-    lower, upper = dist.interval(alpha=alpha)
+    lower, upper = ceil_interval(dist, alpha)
 
-    covered = (
-        (y_true_arr >= np.round(lower)) & (y_true_arr <= np.round(upper))
-    ).astype(float)
+    covered = ((y_true_arr >= lower) & (y_true_arr <= upper)).astype(float)
 
     return float(np.mean(covered))
 
@@ -534,7 +718,8 @@ def estimate_patients(
 ) -> dict[int, tuple]:
     """Estimate the DAOH and prediction interval of selected patients.
 
-    The point prediction is the rounded median of the distribution.
+    The point prediction is the rounded median of the distribution and the
+    interval endpoints are rounded up (see `ceil_interval`).
 
     Parameters
     ----------
@@ -555,14 +740,14 @@ def estimate_patients(
     """
     predictions = dist.median()
     results = {}
-    l_bound, u_bound = dist.interval(alpha)
+    l_bound, u_bound = ceil_interval(dist, alpha)
 
     for index, daoh in ind.items():
         results[index] = (
             daoh,
             np.round(predictions[index]),
-            np.round(l_bound[index]),
-            np.round(u_bound[index]),
+            l_bound[index],
+            u_bound[index],
         )
 
     return results
@@ -605,10 +790,10 @@ def load_eval_results(
         metric: (res["point_estimate"], res["ci_lower"], res["ci_upper"])
         for metric, res in overall.items()
     }
-    if "mae" in results:
-        results.setdefault("crps", results["mae"])
     if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
+    if "mae" in results:
+        results.setdefault("crps", results["mae"])
     return results
 
 

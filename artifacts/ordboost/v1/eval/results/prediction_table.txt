@@ -1,12 +1,12 @@
 \begin{tabular}{lcccc}
 \toprule
-$\mathbf{DAOH_{90}}$ & \textbf{HGBregressor} & \textbf{OrdinalRidge} & \textbf{NGBoost} & \textbf{OrdBoost} \\
+$\mathbf{DAOH_{90}}$ & \textbf{HGBRegressor} & \textbf{OrdinalRidge} & \textbf{NGBoost} & \textbf{OrdBoost} \\
 days & point-estimate & point-estimate & median [95\% PI] & median [95\% PI] \\
 \midrule
-0 & 18 & 58 & 21 [0--89] & -0 [-0--84] \\
-20 & 48 & 62 & 40 [0--89] & 14 [-0--84] \\
-70 & 68 & 72 & 66 [8--89] & 70 [-0--87] \\
-85 & 85 & 86 & 85 [79--89] & 86 [79--88] \\
+0 & 18 & 58 & 21 [0--89] & -0 [0--84] \\
+20 & 48 & 62 & 40 [0--89] & 14 [0--85] \\
+70 & 68 & 72 & 66 [9--89] & 70 [0--87] \\
+85 & 85 & 86 & 85 [80--89] & 86 [80--89] \\
 89 & 89 & 89 & 89 [86--89] & 89 [87--89] \\
 \bottomrule
 \end{tabular}

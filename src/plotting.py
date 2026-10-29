@@ -143,6 +143,69 @@ def plot_binned_vs_continuous(
     return fig, axes
 
 
+def plot_predicted_distribution(
+    y_pred: ArrayLike,
+    color: str,
+    title: str,
+    n_fine_bins: int = 90,
+    log_scale: bool = True,
+    save_path: str | Path | None = None,
+) -> tuple[Figure, Axes]:
+    """Plot the distribution of a model's predictions on the test set.
+
+    The histogram mirrors the continuous panel of `plot_binned_vs_continuous`
+    (one bin per day, log y-axis), so that the two are directly comparable.
+
+    Parameters
+    ----------
+    y_pred : array-like
+        Predicted DAOH-90 values (in days) for the test set.
+    color : str
+        Colour of the bars.
+    title : str
+        Model name used in the legend.
+    n_fine_bins : int, default=90
+        Number of bins of the histogram.
+    log_scale : bool, default=True
+        Use a log y-axis.
+    save_path : str or Path, optional
+        If given, the figure is saved there.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure.
+    ax : matplotlib.axes.Axes
+        The axes.
+
+    """
+    y_pred = np.asarray(y_pred, dtype=float)
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 3))
+    ax.hist(
+        y_pred,
+        bins=np.arange(-0.5, n_fine_bins + 0.5, 1),
+        color=color,
+        edgecolor="black",
+        label=rf"{title} predicted $DAOH_{{90}}$",
+    )
+
+    if log_scale:
+        ax.set_yscale("log")
+
+    ax.set_xlabel(r"$\mathbf{DAOH_{90}}$ (days)", fontweight="bold")
+    ax.set_ylabel("Count", fontweight="bold")
+    ax.legend(frameon=False)
+    ax.set_ylim(bottom=10.5)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
 def plot_sample_cdfs(
     model_results: dict[str, Any],
     colors: list[str],

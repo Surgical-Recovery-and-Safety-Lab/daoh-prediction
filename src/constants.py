@@ -7,3 +7,5 @@ MAPPERS_EXP_ORDER = ["mean", "median", "uniform", "continuous", "quantile"]
 N_BOOT = 1000
 BOOTSTRAP_SEED = 42
 CI_LEVEL = 0.95
+
+THRESHOLDS = [0, 45, 78, 83, 88]

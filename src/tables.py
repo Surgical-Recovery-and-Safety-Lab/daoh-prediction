@@ -181,8 +181,10 @@ def generate_result_table(
     ----------
     results : dict[str, dict[str, tuple[float, float, float]]]
         Model key -> metrics (keys "mae", "maess", "crps" and "crpss"), each
-        as (estimate, lower, upper). MAE and CRPS come from
-        `load_eval_results` and the skill scores from `compute_metrics`. A
+        as (estimate, lower, upper). The CRPS and skill
+        scores come from `compute_metrics`, and the MAE of the distributional
+        models from `median_mae`. The MAE of the point-forecast models comes
+        from `load_eval_results`. A
         metric row is only written if every model in `order` has it.
     order : list[str]
         Model keys controlling the column order.
@@ -401,3 +403,52 @@ def generate_data_table(pipe: MedpipeRegressor) -> None:
         label="tab:patient_chars",
     )
     save_table(latex_table, pipe.run_dir / "results/table_patient_chars.txt")
+
+
+def generate_classifier_table(
+    results: dict[str, dict[str, tuple[float, float, float]]],
+    order: list[str],
+    display_labels: dict[str, str],
+    save_path: str | Path,
+) -> None:
+    """Generate the LaTeX classifier metrics table with 95% CIs and save it.
+
+    Parameters
+    ----------
+    results : dict[str, dict[str, tuple[float, float, float]]]
+        Model key -> metrics (keys "auroc", "ici", "brier" and "bss") from
+        `compute_classifier_metrics`, each as (estimate, lower, upper).
+    order : list[str]
+        Model keys controlling the column order.
+    display_labels : dict[str, str]
+        Model key -> LaTeX-escaped display string.
+    save_path : str or Path
+        File to save the table in.
+
+    """
+    lines = [
+        r"\begin{tabular}{" + "c" * (len(order) + 1) + "}",
+        r"\toprule",
+        r"\textbf{Metrics} & "
+        + " & ".join(rf"\textbf{{{display_labels[key]}}}" for key in order)
+        + r" \\",
+        r"\midrule",
+    ]
+
+    metric_rows = [
+        ("AUROC", "auroc"),
+        ("ICI", "ici"),
+        ("Brier score", "brier"),
+        ("Brier skill score", "bss"),
+    ]
+
+    for row_label, metric_key in metric_rows:
+        cells = []
+        for key in order:
+            value, lower, upper = results[key][metric_key]
+            cells.append(f"{value:.3f} [{lower:.3f}, {upper:.3f}]")
+        lines.append(f"{row_label} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    save_table("\n".join(lines), save_path)
