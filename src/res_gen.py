@@ -114,7 +114,7 @@ def generate_results(
     display_labels = {
         "ngboost": "NGBoost",
         "ordboost": "OrdBoost",
-        "HGBr": "HGBregressor",
+        "HGBr": "HGBRegressor",
         "mord": "OrdinalRidge",
     }
     mapper = ordboost_pipe.models["DAOH_90"]["regressor"].mapper_
