@@ -563,14 +563,14 @@ def generate_prediction_distributions(
         Model key -> display string.
 
     """
-    for model, pred in predictions.items():
+    for i, (model, pred) in enumerate(predictions.items()):
         y_pred = np.round(pred.median()) if hasattr(pred, "median") else pred
 
         plot_dir = pipes[model].run_dir / "plots"
         plot_dir.mkdir(parents=True, exist_ok=True)
         fig, _ = plot_predicted_distribution(
             y_pred,
-            color=THEME.palette[0],
+            color=THEME.palette[i],
             title=display_labels[model],
             save_path=plot_dir / "predicted_distribution.png",
         )
