@@ -1,6 +1,6 @@
 # Models and metrics
-medpipe==0.4.0.dev2
-ordboost==0.4.0
+medpipe==0.4.0
+ordboost>=0.6.1
 mord
 ngboost
 properscoring
