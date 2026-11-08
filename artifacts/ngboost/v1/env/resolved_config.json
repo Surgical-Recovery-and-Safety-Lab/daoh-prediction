@@ -5,13 +5,13 @@
         "verbose": "info"
     },
     "data": {
-        "path": "/pvol/mroe734/data/NZ_data.v2.parquet",
+        "path": "/pvol/mroe734/data/NZ_data.v2.1.pq",
         "predictors": [
             "AGE",
-            "SEX",
+            "SEX_ORIGINAL",
             "PRIOR_CANCER",
-            "ETHNICITY",
-            "ASA",
+            "ETHNICITY_ORIGINAL",
+            "ASA_ORIGINAL",
             "ADMISSION_ACUITY",
             "ADMISSION_SOURCE",
             "CATEGORY_LEVEL_1",
@@ -33,12 +33,16 @@
                 {
                     "name": "OrdinalEncoder",
                     "columns": [
-                        "SEX",
-                        "ETHNICITY",
+                        "SEX_ORIGINAL",
+                        "ETHNICITY_ORIGINAL",
                         "ADMISSION_ACUITY",
                         "ADMISSION_SOURCE",
                         "CATEGORY_LEVEL_1",
-                        "CATEGORY_LEVEL_2"
+                        "CATEGORY_LEVEL_2",
+                        "ASA_ORIGINAL",
+                        "OP_SEVERITY",
+                        "PRIOR_CANCER",
+                        "TRAUMA"
                     ]
                 }
             ]
