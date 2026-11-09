@@ -188,7 +188,7 @@ def generate_results(
     )
 
     grid_y = ordboost_dist.grid_y  # Extracted for NGBoost to match
-    indices = {298960: 0, 340896: 20, 26586: 70, 101: 85, 20: 89}
+    indices = {8278: 0, 336271: 25, 55049: 70, 30: 85, 12: 89}
 
     results = {}
     for model, dist in models.items():
