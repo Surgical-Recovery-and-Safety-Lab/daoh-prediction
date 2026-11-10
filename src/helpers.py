@@ -10,9 +10,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
+from medpipe import MedpipeRegressor
+from medpipe.metrics import ici_score
 from numpy.typing import ArrayLike
+from ordboost.distributions import ContinuousPredictiveDistribution
+from ordboost.mappers import BaseBinMapper
+from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
 from sklearn.metrics import roc_auc_score
+
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
 from src.helpers_ngboost import (
@@ -21,12 +27,6 @@ from src.helpers_ngboost import (
     crps_ngboost_samples,
     pit_diagnostics_ngboost,
 )
-
-from medpipe import MedpipeRegressor
-from medpipe.metrics import ici_score
-from ordboost.distributions import ContinuousPredictiveDistribution
-from ordboost.mappers import BaseBinMapper
-from ordboost.metrics import baseline_distribution, pit_diagnostics
 
 
 def wrap_ngboost_pred_dist(ngb_pred_dist: Any) -> NGBoostDistAdapter:
@@ -52,13 +52,14 @@ def compute_metrics(
     y_pred: ArrayLike,
     dist: NGBoostDistAdapter | ContinuousPredictiveDistribution | None,
     baseline_crps: ArrayLike,
+    baseline_median: float,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
 ) -> dict[str, tuple[float, float, float]]:
     """Compute the MAE, MAESS, CRPS and CRPSS for one model, with 95% CIs.
 
     The skill scores are computed relative to a baseline: the median of
-    `y_true` for the MAE, and the per-sample CRPS of the baseline
+    training data for the MAE, and the per-sample CRPS of the baseline
     distribution (`baseline_crps`) for the CRPS. The same `baseline_crps` must
     be passed for every model so that all the CRPSS share one reference. If
     the model has no predictive distribution, it is a point forecast whose
@@ -78,6 +79,8 @@ def compute_metrics(
     baseline_crps : array-like of shape (n_samples,)
         Per-sample CRPS of the baseline distribution on the test set, as
         returned by `compute_baseline_crps`.
+    baseline_median : float
+        Median value of the training data used to compute the MAESS.
     n_boot : int, default=1000
         Number of bootstrap iterations.
     seed : int, default=42
@@ -102,7 +105,7 @@ def compute_metrics(
     def statistic(idx: np.ndarray) -> np.ndarray:
         y = y_true_arr[idx]
         mae = abs_err[idx].mean()
-        maess = 1 - mae / np.abs(y - np.quantile(y, 0.5)).mean()
+        maess = 1 - mae / np.abs(y - baseline_median).mean()
         crps = crps_i[idx].mean()
         crpss = 1 - crps / baseline_crps_i[idx].mean()
         return np.array([mae, maess, crps, crpss])

@@ -366,6 +366,7 @@ def generate_experiment_results(
             np.round(models[name].median()),
             models[name],
             baseline_crps,
+            np.median(y_train),
         )
         evaluated = load_eval_results(artifacts_dir / f"v{i}")
         evaluated["mae"] = median_mae(y_test, models[name])
