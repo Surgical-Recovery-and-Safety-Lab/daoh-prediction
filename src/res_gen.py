@@ -319,8 +319,8 @@ def generate_experiment_results(
 
     # Extract the data
     pipes[0]._orchestrator.prepare_data()
-    X_test = pipes[0].data_split.X_test
-    y_test = pipes[0].data_split.y_test.to_numpy().squeeze()
+    X_test = pipes[0].data_split.X_recal
+    y_test = pipes[0].data_split.y_recal.to_numpy().squeeze()
     y_train = pipes[0].data_split.y_train.to_numpy().squeeze()
 
     baseline_crps = compute_baseline_crps(y_test, y_train)

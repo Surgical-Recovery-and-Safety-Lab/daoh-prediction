@@ -4,8 +4,6 @@ import tomllib
 from pathlib import Path
 from typing import Literal
 
-from medpipe import MedpipeRegressor
-
 from src.constants import BIN_DIST_EXP_ORDER, MAPPERS_EXP_ORDER, N_BINS_EXP_ORDER
 from src.helpers import (
     bin_intervals,
@@ -14,6 +12,8 @@ from src.helpers import (
     load_cv_summary,
     save_table,
 )
+
+from medpipe import MedpipeRegressor
 
 
 def generate_cv_table(
@@ -361,6 +361,7 @@ def generate_data_table(pipe: MedpipeRegressor) -> None:
 
     """
     X_test = pipe.data_split.X_test
+    X_recal = pipe.data_split.X_recal
     X_train = pipe.data_split.X_train
 
     category_orders = {
@@ -372,6 +373,7 @@ def generate_data_table(pipe: MedpipeRegressor) -> None:
 
     latex_table = generate_patient_characteristics_table(
         X_train,
+        X_recal,
         X_test,
         continuous_features=["AGE"],
         categorical_features=[

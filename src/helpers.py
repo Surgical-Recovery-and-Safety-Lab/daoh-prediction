@@ -10,15 +10,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
-from medpipe import MedpipeRegressor
-from medpipe.metrics import ici_score
 from numpy.typing import ArrayLike
-from ordboost.distributions import ContinuousPredictiveDistribution
-from ordboost.mappers import BaseBinMapper
-from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
 from sklearn.metrics import roc_auc_score
-
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
 from src.helpers_ngboost import (
@@ -27,6 +21,12 @@ from src.helpers_ngboost import (
     crps_ngboost_samples,
     pit_diagnostics_ngboost,
 )
+
+from medpipe import MedpipeRegressor
+from medpipe.metrics import ici_score
+from ordboost.distributions import ContinuousPredictiveDistribution
+from ordboost.mappers import BaseBinMapper
+from ordboost.metrics import baseline_distribution, pit_diagnostics
 
 
 def wrap_ngboost_pred_dist(ngb_pred_dist: Any) -> NGBoostDistAdapter:
@@ -925,29 +925,26 @@ def _categorical_rows(
 
 
 def generate_patient_characteristics_table(
-    X_train: pd.DataFrame,
-    X_test: pd.DataFrame,
-    continuous_features: list[str],
-    categorical_features: list[str],
-    feature_labels: dict[str, str] | None = None,
-    category_orders: dict[str, Sequence[Any]] | None = None,
-    caption: str = "Patient characteristics by dataset.",
-    label: str = "tab:patient_chars",
-) -> str:
-    """Build a LaTeX longtable/booktabs patient characteristics table.
-
-    The table compares the train and test splits.
+    X_train,
+    X_recal,
+    X_test,
+    continuous_features,
+    categorical_features,
+    feature_labels=None,
+    category_orders=None,
+    caption="Patient characteristics by dataset.",
+    label="tab:patient_chars",
+):
+    """Build a LaTeX longtable/booktabs patient characteristics table
+    across the train/recalibration/test splits.
 
     Parameters
     ----------
-    X_train : pd.DataFrame
-        Training features with the original (pre-OrdinalEncoder) categorical
+    X_train, X_recal, X_test : pd.DataFrame
+        Feature dataframes with ORIGINAL (pre-OrdinalEncoder) categorical
         values, so category labels render as text rather than integer codes.
-    X_test : pd.DataFrame
-        Test features, with the same format as `X_train`.
     continuous_features : list[str]
-        Columns summarised as median (IQR). Only the first one is used, and
-        it is reported as the age.
+        Columns summarised as median (IQR).
     categorical_features : list[str]
         Columns summarised as one row per category, N (%).
     feature_labels : dict[str, str], optional
@@ -956,44 +953,34 @@ def generate_patient_characteristics_table(
         Column name -> explicit category order, e.g. {"trauma": ["No","Yes"]},
         so binary features don't sort alphabetically as ["No","Yes"] vs
         ["Yes","No"] depending on the data.
-    caption : str, default="Patient characteristics by dataset."
-        Table caption.
-    label : str, default="tab:patient_chars"
-        LaTeX label of the table.
+    caption, label : str
 
     Returns
     -------
     str
         Complete LaTeX longtable source.
-
     """
     feature_labels = feature_labels or {}
     category_orders = category_orders or {}
-    datasets = [X_train, X_test]
-    n_train, n_test = (len(d) for d in datasets)
+    datasets = [X_train, X_recal, X_test]
+    n_train, n_recal, n_test = (len(d) for d in datasets)
 
     header = (
         r"\textbf{Features} & "
-        rf"\shortstack[l]{{\textbf{{Train (2010--2022)}} \\ N = {n_train:,}}} & "
-        rf"\shortstack[l]{{\textbf{{Test (2023--2024)}} \\ N = {n_test:,}}} \\"
+        rf"{{\textbf{{Train (2010--2022)}} \\ N = {n_train:,}}} & "
+        rf"{{\textbf{{Validation (2023)}} \\ N = {n_recal:,}}} & "
+        rf"{{\textbf{{Test (2024)}} \\ N = {n_test:,}}} \\"
     )
+    col_spec = "clll"
     lines = [
-        r"\begin{longtable}{l l l}",
-        r"\caption{" + caption + r"} \label{" + label + r"} \\",
+        r"\begin{table}[htbp]",
+        r"\centering",
+        rf"\caption{{{caption}}}",
+        rf"\label{{{label}}}",
+        rf"\begin{{tabular}}{{{col_spec}}}",
         r"\toprule",
         header,
-        r"\midrule\midrule",
-        r"\endfirsthead",
-        r"\multicolumn{3}{l}{\textit{(continued)}} \\",
-        r"\toprule",
-        header,
-        r"\midrule\midrule",
-        r"\endhead",
         r"\midrule",
-        r"\multicolumn{3}{r}{\textit{Continued on next page}} \\",
-        r"\endfoot",
-        r"\bottomrule",
-        r"\endlastfoot",
     ]
 
     # Age first, as specified
@@ -1001,16 +988,17 @@ def generate_patient_characteristics_table(
     age_label = feature_labels.get(age_col, "Age")
     cells = [_format_continuous(d[age_col]) for d in datasets]
     lines.append(rf"{age_label}, median (IQR) & " + " & ".join(cells) + r" \\")
-    lines.append(r"\addlinespace")
 
     for col in categorical_features:
+        lines.append(r"\midrule")
         label_txt = feature_labels.get(col, col)
         lines.append(rf"\multicolumn{{3}}{{l}}{{\textbf{{{label_txt}}}}} \\")
         for cat_label, cells in _categorical_rows(
             datasets, col, category_orders.get(col)
         ):
-            lines.append(rf"\quad {cat_label} & " + " & ".join(cells) + r" \\")
-        lines.append(r"\addlinespace")
+            lines.append(rf"{cat_label} & " + " & ".join(cells) + r" \\")
 
-    lines.append(r"\end{longtable}")
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
     return "\n".join(lines)
