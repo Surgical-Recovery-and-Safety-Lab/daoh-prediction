@@ -52,7 +52,6 @@
                 "strategy": "group",
                 "group_column": "OP_YEAR",
                 "values": [
-                    2023,
                     2024
                 ],
                 "test_size": null
@@ -64,7 +63,14 @@
                 "n_splits": 10,
                 "shuffle": true
             },
-            "recalibration_split": null
+            "recalibration_split": {
+                "strategy": "group",
+                "group_column": "OP_YEAR",
+                "values": [
+                    2023
+                ],
+                "recalibration_size": null
+            }
         },
         "evaluation": {
             "metrics": {
