@@ -170,7 +170,9 @@ def generate_results(
         # The skill scores and the CRPS of the distributional models come from
         # the same computation, so that the CRPS and CRPSS use one CRPS value.
         # Their MAE is computed on the median.
-        metrics = compute_metrics(y_true, y_pred, dist, baseline_crps)
+        metrics = compute_metrics(
+            y_true, y_pred, dist, baseline_crps, np.median(y_train)
+        )
         evaluated = load_eval_results(f"artifacts/{model}/{versions[model]}")
         if dist is not None:
             evaluated["mae"] = median_mae(y_true, dist)
@@ -188,7 +190,7 @@ def generate_results(
     )
 
     grid_y = ordboost_dist.grid_y  # Extracted for NGBoost to match
-    indices = {8278: 0, 336271: 25, 55049: 70, 30: 85, 12: 89}
+    indices = {3984: 0, 162422: 20, 3438: 70, 81: 85, 20: 89}
 
     results = {}
     for model, dist in models.items():
