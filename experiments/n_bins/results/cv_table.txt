@@ -2,7 +2,7 @@
 \toprule
 \textbf{Metrics} & \textbf{4-bins} & \textbf{8-bins} & \textbf{12-bins} & \textbf{16-bins} & \textbf{20-bins} \\
 \midrule
-MAE (days) & $8.41 \pm 0.02$ & $5.33 \pm 0.02$ & $4.60 \pm 0.02$ & $4.31 \pm 0.02$ & $4.16 \pm 0.02$ \\
-CRPS (days) & $4.84 \pm 0.02$ & $3.36 \pm 0.02$ & $3.00 \pm 0.02$ & $2.85 \pm 0.02$ & $2.77 \pm 0.02$ \\
+MAE (days) & $8.58 \pm 0.01$ & $5.55 \pm 0.01$ & $4.85 \pm 0.01$ & $4.57 \pm 0.01$ & $4.43 \pm 0.01$ \\
+CRPS (days) & $4.96 \pm 0.01$ & $3.49 \pm 0.01$ & $3.15 \pm 0.01$ & $3.01 \pm 0.01$ & $2.93 \pm 0.01$ \\
 \bottomrule
 \end{tabular}

@@ -4,7 +4,7 @@ run_mode = "cv"
 verbose = "info"
 
 [data]
-path = "/pvol/mroe734/data/NZ_data.v2.parquet"
+path = "/pvol/mroe734/data/NZ_data.v2.1.pq"
 predictors = [
   "AGE",
   "SEX",
@@ -69,7 +69,12 @@ operations = [
 [workflow.validation.test_split]
 strategy = "group"
 group_column = "OP_YEAR"
-values = [2023, 2024]
+values = [2024]
+
+[workflow.validation.recalibration_split]
+strategy = "group"
+group_column = "OP_YEAR"
+values = [2023]
 
 [workflow.validation.cross_validation]
 strategy = "random"
