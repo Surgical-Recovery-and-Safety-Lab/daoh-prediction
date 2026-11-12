@@ -1,7 +1,5 @@
 # OrdBoost for days alive and out of hospital
 
-Code accompanying our submission to the **ML4H 2026** conference.
-
 This work builds on [OrdBoost](https://pypi.org/project/ordboost/) and evaluates
 its performance on a clinical target: the number of **days alive and out of
 hospital at 90 days** (DAOH₉₀). OrdBoost is compared with NGBoost, a histogram
@@ -18,7 +16,9 @@ Python 3.12 is recommended.
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
+# with linting and type checking tools
+pip install -e ".[dev]"
 ```
 
 ## Data availability
