@@ -826,7 +826,7 @@ def load_eval_results(
     -------
     dict[str, tuple[float, float, float]]
         Metric ("mae", "crps") -> (estimate, lower, upper), for the metrics
-        that were evaluated.
+        that were evaluated. "mae_median" is returned as "mae".
 
     Raises
     ------
@@ -846,6 +846,10 @@ def load_eval_results(
         metric: (res["point_estimate"], res["ci_lower"], res["ci_upper"])
         for metric, res in overall.items()
     }
+    # OrdBoost models report the MAE of the median as "mae_median" instead of
+    # "mae" (never both), so it is stored under "mae"
+    if "mae_median" in results:
+        results["mae"] = results.pop("mae_median")
     if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
     if "mae" in results:
@@ -868,7 +872,7 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
     Returns
     -------
     dict[str, tuple[float, float]]
-        Metric ("mae", "crps") -> (mean, std).
+        Metric ("mae", "crps") -> (mean, std). "mae_median" is returned as "mae".
 
     Raises
     ------
@@ -886,13 +890,17 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
 
     results = {
         metric: (-summary[metric]["mean"], summary[metric]["std"])
-        for metric in ("mae", "crps", "crps_ngboost")
+        for metric in ("mae", "mae_median", "crps", "crps_ngboost")
         if metric in summary
     }
-    results.setdefault("crps", results["mae"])
+    # OrdBoost models report the MAE of the median as "mae_median" instead of
+    # "mae" (never both), so it is stored under "mae"
+    if "mae_median" in results:
+        results["mae"] = results.pop("mae_median")
     if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
         results.pop("crps_ngboost")
+    results.setdefault("crps", results["mae"])
     return results
 
 
