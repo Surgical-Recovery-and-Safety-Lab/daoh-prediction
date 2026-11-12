@@ -92,7 +92,7 @@ def plot_binned_vs_continuous(
     # Continuous distribution: fine fixed-width histogram.
     axes[0].hist(
         y_cont,
-        bins=np.arange(-0.5, n_fine_bins + 0.5, 1),
+        bins=np.arange(-0.5, n_fine_bins + 0.5, 1).tolist(),
         color=colors[0],
         edgecolor="black",
         label=r"Continuous $DAOH_{90}$",
@@ -184,7 +184,7 @@ def plot_predicted_distribution(
     fig, ax = plt.subplots(1, 1, figsize=(8, 3))
     ax.hist(
         y_pred,
-        bins=np.arange(-0.5, n_fine_bins + 0.5, 1),
+        bins=np.arange(-0.5, n_fine_bins + 0.5, 1).tolist(),
         color=color,
         edgecolor="black",
         label=rf"{title} predicted $DAOH_{{90}}$",
@@ -396,7 +396,9 @@ def plot_pit_histogram_grouped(
     ax.legend(frameon=False, loc="upper left")
 
     if save_path is not None:
-        ax.figure.savefig(save_path, dpi=300, bbox_inches="tight")
+        fig = ax.get_figure(root=True)
+        assert fig is not None  # An Axes drawn on always belongs to a figure
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
     return ax
 
 
@@ -433,7 +435,7 @@ def plot_marginal_calibration(
     if ax is None:
         _, ax = plt.subplots(figsize=(7, 5))
 
-    style = {
+    style: dict[str, dict[str, Any]] = {
         "ngboost": {"color": COLOURS["ngboost"]},
         "ordboost": {"color": COLOURS["ordboost"]},
         "uniform": {"color": COLOURS["uniform"]},
@@ -484,7 +486,9 @@ def plot_marginal_calibration(
     ax.spines["right"].set_visible(False)
 
     if save_path is not None:
-        ax.figure.savefig(save_path, dpi=300, bbox_inches="tight")
+        fig = ax.get_figure(root=True)
+        assert fig is not None  # An Axes drawn on always belongs to a figure
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
 
     return ax
 
@@ -539,7 +543,7 @@ def _plot_coverage_metric(
 
     """
     display_labels = display_labels or {}
-    style = {
+    style: dict[str, dict[str, Any]] = {
         "ngboost": {"color": COLOURS["ngboost"], "marker": "o", "ms": 0.5},
         "ordboost": {"color": COLOURS["ordboost"], "marker": "s", "ms": 0.5},
         "uniform": {"color": COLOURS["uniform"], "marker": "s", "ms": 0.5},
