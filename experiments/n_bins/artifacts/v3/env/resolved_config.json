@@ -5,7 +5,7 @@
         "verbose": "info"
     },
     "data": {
-        "path": "/pvol/mroe734/data/NZ_data.v2.parquet",
+        "path": "/pvol/mroe734/data/NZ_data.v2.1.pq",
         "predictors": [
             "AGE",
             "SEX",
@@ -52,7 +52,6 @@
                 "strategy": "group",
                 "group_column": "OP_YEAR",
                 "values": [
-                    2023,
                     2024
                 ],
                 "test_size": null
@@ -64,12 +63,19 @@
                 "n_splits": 10,
                 "shuffle": true
             },
-            "recalibration_split": null
+            "recalibration_split": {
+                "strategy": "group",
+                "group_column": "OP_YEAR",
+                "values": [
+                    2023
+                ],
+                "recalibration_size": null
+            }
         },
         "evaluation": {
             "metrics": {
                 "metrics": [
-                    "mae",
+                    "mae_median",
                     "crps"
                 ],
                 "n_bootstraps": 1000,

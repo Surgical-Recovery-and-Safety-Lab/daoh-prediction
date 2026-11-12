@@ -5,13 +5,13 @@
         "verbose": "info"
     },
     "data": {
-        "path": "/pvol/mroe734/data/NZ_data.v2.parquet",
+        "path": "/pvol/mroe734/data/NZ_data.v2.1.pq",
         "predictors": [
             "AGE",
-            "SEX",
+            "SEX_ORIGINAL",
             "PRIOR_CANCER",
-            "ETHNICITY",
-            "ASA",
+            "ETHNICITY_ORIGINAL",
+            "ASA_ORIGINAL",
             "ADMISSION_ACUITY",
             "ADMISSION_SOURCE",
             "CATEGORY_LEVEL_1",
@@ -33,7 +33,7 @@
                 {
                     "name": "SimpleImputer",
                     "columns": [
-                        "ASA",
+                        "ASA_ORIGINAL",
                         "OP_SEVERITY"
                     ],
                     "strategy": "most_frequent",
@@ -42,10 +42,10 @@
                 {
                     "name": "OneHotEncoder",
                     "columns": [
-                        "SEX",
+                        "SEX_ORIGINAL",
                         "TRAUMA",
                         "PRIOR_CANCER",
-                        "ETHNICITY",
+                        "ETHNICITY_ORIGINAL",
                         "ADMISSION_ACUITY",
                         "ADMISSION_SOURCE"
                     ],
@@ -64,7 +64,7 @@
                     "name": "StandardScaler",
                     "columns": [
                         "AGE",
-                        "ASA",
+                        "ASA_ORIGINAL",
                         "OP_SEVERITY",
                         "CATEGORY_LEVEL_1",
                         "CATEGORY_LEVEL_2"
@@ -77,7 +77,6 @@
                 "strategy": "group",
                 "group_column": "OP_YEAR",
                 "values": [
-                    2023,
                     2024
                 ],
                 "test_size": null
@@ -89,7 +88,14 @@
                 "n_splits": 10,
                 "shuffle": true
             },
-            "recalibration_split": null
+            "recalibration_split": {
+                "strategy": "group",
+                "group_column": "OP_YEAR",
+                "values": [
+                    2023
+                ],
+                "recalibration_size": null
+            }
         },
         "evaluation": {
             "metrics": {

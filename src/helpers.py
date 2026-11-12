@@ -10,23 +10,76 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
-from medpipe import MedpipeRegressor
+from medpipe import MedpipeRegressor, MetricRegistry, MetricSpec, ModelRegistry
 from medpipe.metrics import ici_score
+from mord import OrdinalRidge
 from numpy.typing import ArrayLike
 from ordboost.distributions import ContinuousPredictiveDistribution
 from ordboost.mappers import BaseBinMapper
 from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import mean_absolute_error, roc_auc_score
 
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
 from src.helpers_ngboost import (
     NGBoostDistAdapter,
     cdf_grid_ngboost,
+    crps_ngboost_per_sample,
     crps_ngboost_samples,
+    crps_ngboost_score,
     pit_diagnostics_ngboost,
 )
+
+
+def mae_median(y_true: ArrayLike, dist: ContinuousPredictiveDistribution) -> float:
+    """Compute the mean absolute error using the predicted medians.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values.
+    dist : PredictiveDistribution
+        Predicted distribution from `OrdBoostRegressor.pred_dist`.
+
+    Returns
+    -------
+    float
+        Mean absolute error.
+
+    """
+    return float(mean_absolute_error(y_true, dist.median()))
+
+
+def medpipe_register_updates() -> None:
+    """Updates the MedPipe metric and model registries.
+
+    The OrdinalRidge model is added to the model registry and
+    the mae_median and crps_ngboost metrics are added to the
+    metric registry.
+
+    """
+
+    ModelRegistry.register(name="OrdinalRidge")(OrdinalRidge)
+
+    MetricRegistry.register_spec(
+        MetricSpec(
+            name="crps_ngboost",
+            func=crps_ngboost_score,
+            response_method="predict_dist",
+            display_name="CRPS (NGBoost)",
+            per_sample_func=crps_ngboost_per_sample,
+        )
+    )
+
+    MetricRegistry.register_spec(
+        MetricSpec(
+            name="mae_median",
+            func=mae_median,
+            response_method="predict_dist",
+            display_name="MAE",
+        )
+    )
 
 
 def wrap_ngboost_pred_dist(ngb_pred_dist: Any) -> NGBoostDistAdapter:
@@ -52,13 +105,14 @@ def compute_metrics(
     y_pred: ArrayLike,
     dist: NGBoostDistAdapter | ContinuousPredictiveDistribution | None,
     baseline_crps: ArrayLike,
+    baseline_median: float,
     n_boot: int = N_BOOT,
     seed: int = BOOTSTRAP_SEED,
 ) -> dict[str, tuple[float, float, float]]:
     """Compute the MAE, MAESS, CRPS and CRPSS for one model, with 95% CIs.
 
     The skill scores are computed relative to a baseline: the median of
-    `y_true` for the MAE, and the per-sample CRPS of the baseline
+    training data for the MAE, and the per-sample CRPS of the baseline
     distribution (`baseline_crps`) for the CRPS. The same `baseline_crps` must
     be passed for every model so that all the CRPSS share one reference. If
     the model has no predictive distribution, it is a point forecast whose
@@ -78,6 +132,8 @@ def compute_metrics(
     baseline_crps : array-like of shape (n_samples,)
         Per-sample CRPS of the baseline distribution on the test set, as
         returned by `compute_baseline_crps`.
+    baseline_median : float
+        Median value of the training data used to compute the MAESS.
     n_boot : int, default=1000
         Number of bootstrap iterations.
     seed : int, default=42
@@ -102,7 +158,7 @@ def compute_metrics(
     def statistic(idx: np.ndarray) -> np.ndarray:
         y = y_true_arr[idx]
         mae = abs_err[idx].mean()
-        maess = 1 - mae / np.abs(y - np.quantile(y, 0.5)).mean()
+        maess = 1 - mae / np.abs(y - baseline_median).mean()
         crps = crps_i[idx].mean()
         crpss = 1 - crps / baseline_crps_i[idx].mean()
         return np.array([mae, maess, crps, crpss])
@@ -360,7 +416,8 @@ def compute_sample_cdfs(
         "cdfs": {daoh: cdf_array}
 
     """
-    cdfs = {"grid_y": grid_y, "cdfs": {}}
+    cdf_by_daoh: dict[int, np.ndarray] = {}
+    cdfs: dict[str, Any] = {"grid_y": grid_y, "cdfs": cdf_by_daoh}
 
     # Extract proper CDF grids
     if isinstance(dist, NGBoostDistAdapter):
@@ -369,7 +426,7 @@ def compute_sample_cdfs(
         cdf_grid = dist.grid_cdf
 
     for index, daoh in indices.items():  # Loop over indices
-        cdfs["cdfs"][daoh] = cdf_grid[index]
+        cdf_by_daoh[daoh] = cdf_grid[index]
     return cdfs
 
 
@@ -664,7 +721,7 @@ def coverage_sharpness_curve(
     draws = bootstrap_statistic(statistic, n_samples, n_boot, seed)
     lower, upper = percentile_interval(draws)
 
-    results = {"coverage_levels": coverage_levels}
+    results: dict[str, Any] = {"coverage_levels": coverage_levels}
     names = ["empirical_coverage", "sharpness", "winkler"]
     for k, name in enumerate(names):
         block = slice(k * n_levels, (k + 1) * n_levels)
@@ -770,7 +827,7 @@ def load_eval_results(
     -------
     dict[str, tuple[float, float, float]]
         Metric ("mae", "crps") -> (estimate, lower, upper), for the metrics
-        that were evaluated.
+        that were evaluated. "mae_median" is returned as "mae".
 
     Raises
     ------
@@ -790,6 +847,10 @@ def load_eval_results(
         metric: (res["point_estimate"], res["ci_lower"], res["ci_upper"])
         for metric, res in overall.items()
     }
+    # OrdBoost models report the MAE of the median as "mae_median" instead of
+    # "mae" (never both), so it is stored under "mae"
+    if "mae_median" in results:
+        results["mae"] = results.pop("mae_median")
     if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
     if "mae" in results:
@@ -812,7 +873,7 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
     Returns
     -------
     dict[str, tuple[float, float]]
-        Metric ("mae", "crps") -> (mean, std).
+        Metric ("mae", "crps") -> (mean, std). "mae_median" is returned as "mae".
 
     Raises
     ------
@@ -830,13 +891,17 @@ def load_cv_summary(artifact_dir: str | Path) -> dict[str, tuple[float, float]]:
 
     results = {
         metric: (-summary[metric]["mean"], summary[metric]["std"])
-        for metric in ("mae", "crps", "crps_ngboost")
+        for metric in ("mae", "mae_median", "crps", "crps_ngboost")
         if metric in summary
     }
-    results.setdefault("crps", results["mae"])
+    # OrdBoost models report the MAE of the median as "mae_median" instead of
+    # "mae" (never both), so it is stored under "mae"
+    if "mae_median" in results:
+        results["mae"] = results.pop("mae_median")
     if "crps_ngboost" in results:
         results.setdefault("crps", results["crps_ngboost"])
         results.pop("crps_ngboost")
+    results.setdefault("crps", results["mae"])
     return results
 
 
@@ -925,29 +990,26 @@ def _categorical_rows(
 
 
 def generate_patient_characteristics_table(
-    X_train: pd.DataFrame,
-    X_test: pd.DataFrame,
-    continuous_features: list[str],
-    categorical_features: list[str],
-    feature_labels: dict[str, str] | None = None,
-    category_orders: dict[str, Sequence[Any]] | None = None,
-    caption: str = "Patient characteristics by dataset.",
-    label: str = "tab:patient_chars",
-) -> str:
-    """Build a LaTeX longtable/booktabs patient characteristics table.
-
-    The table compares the train and test splits.
+    X_train,
+    X_recal,
+    X_test,
+    continuous_features,
+    categorical_features,
+    feature_labels=None,
+    category_orders=None,
+    caption="Patient characteristics by dataset.",
+    label="tab:patient_chars",
+):
+    """Build a LaTeX longtable/booktabs patient characteristics table
+    across the train/recalibration/test splits.
 
     Parameters
     ----------
-    X_train : pd.DataFrame
-        Training features with the original (pre-OrdinalEncoder) categorical
+    X_train, X_recal, X_test : pd.DataFrame
+        Feature dataframes with ORIGINAL (pre-OrdinalEncoder) categorical
         values, so category labels render as text rather than integer codes.
-    X_test : pd.DataFrame
-        Test features, with the same format as `X_train`.
     continuous_features : list[str]
-        Columns summarised as median (IQR). Only the first one is used, and
-        it is reported as the age.
+        Columns summarised as median (IQR).
     categorical_features : list[str]
         Columns summarised as one row per category, N (%).
     feature_labels : dict[str, str], optional
@@ -956,44 +1018,34 @@ def generate_patient_characteristics_table(
         Column name -> explicit category order, e.g. {"trauma": ["No","Yes"]},
         so binary features don't sort alphabetically as ["No","Yes"] vs
         ["Yes","No"] depending on the data.
-    caption : str, default="Patient characteristics by dataset."
-        Table caption.
-    label : str, default="tab:patient_chars"
-        LaTeX label of the table.
+    caption, label : str
 
     Returns
     -------
     str
         Complete LaTeX longtable source.
-
     """
     feature_labels = feature_labels or {}
     category_orders = category_orders or {}
-    datasets = [X_train, X_test]
-    n_train, n_test = (len(d) for d in datasets)
+    datasets = [X_train, X_recal, X_test]
+    n_train, n_recal, n_test = (len(d) for d in datasets)
 
     header = (
         r"\textbf{Features} & "
-        rf"\shortstack[l]{{\textbf{{Train (2010--2022)}} \\ N = {n_train:,}}} & "
-        rf"\shortstack[l]{{\textbf{{Test (2023--2024)}} \\ N = {n_test:,}}} \\"
+        rf"{{\textbf{{Train (2010--2022)}} \\ N = {n_train:,}}} & "
+        rf"{{\textbf{{Validation (2023)}} \\ N = {n_recal:,}}} & "
+        rf"{{\textbf{{Test (2024)}} \\ N = {n_test:,}}} \\"
     )
+    col_spec = "clll"
     lines = [
-        r"\begin{longtable}{l l l}",
-        r"\caption{" + caption + r"} \label{" + label + r"} \\",
+        r"\begin{table}[htbp]",
+        r"\centering",
+        rf"\caption{{{caption}}}",
+        rf"\label{{{label}}}",
+        rf"\begin{{tabular}}{{{col_spec}}}",
         r"\toprule",
         header,
-        r"\midrule\midrule",
-        r"\endfirsthead",
-        r"\multicolumn{3}{l}{\textit{(continued)}} \\",
-        r"\toprule",
-        header,
-        r"\midrule\midrule",
-        r"\endhead",
         r"\midrule",
-        r"\multicolumn{3}{r}{\textit{Continued on next page}} \\",
-        r"\endfoot",
-        r"\bottomrule",
-        r"\endlastfoot",
     ]
 
     # Age first, as specified
@@ -1001,16 +1053,17 @@ def generate_patient_characteristics_table(
     age_label = feature_labels.get(age_col, "Age")
     cells = [_format_continuous(d[age_col]) for d in datasets]
     lines.append(rf"{age_label}, median (IQR) & " + " & ".join(cells) + r" \\")
-    lines.append(r"\addlinespace")
 
     for col in categorical_features:
+        lines.append(r"\midrule")
         label_txt = feature_labels.get(col, col)
         lines.append(rf"\multicolumn{{3}}{{l}}{{\textbf{{{label_txt}}}}} \\")
         for cat_label, cells in _categorical_rows(
             datasets, col, category_orders.get(col)
         ):
-            lines.append(rf"\quad {cat_label} & " + " & ".join(cells) + r" \\")
-        lines.append(r"\addlinespace")
+            lines.append(rf"{cat_label} & " + " & ".join(cells) + r" \\")
 
-    lines.append(r"\end{longtable}")
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
     return "\n".join(lines)

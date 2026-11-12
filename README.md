@@ -16,7 +16,9 @@ Python 3.12 is recommended.
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
+# with linting and type checking tools
+pip install -e ".[dev]"
 ```
 
 ## Data availability

@@ -156,7 +156,7 @@ def generate_results(
     # One baseline CRPS, computed once, shared by the CRPSS of every model
     baseline_crps = compute_baseline_crps(y_test, y_train)
 
-    results = {}
+    results: dict[str, Any] = {}
     for model, dist in table_models.items():
         y_true = y_test
         if model == "mord":
@@ -170,7 +170,9 @@ def generate_results(
         # The skill scores and the CRPS of the distributional models come from
         # the same computation, so that the CRPS and CRPSS use one CRPS value.
         # Their MAE is computed on the median.
-        metrics = compute_metrics(y_true, y_pred, dist, baseline_crps)
+        metrics = compute_metrics(
+            y_true, y_pred, dist, baseline_crps, np.median(y_train)
+        )
         evaluated = load_eval_results(f"artifacts/{model}/{versions[model]}")
         if dist is not None:
             evaluated["mae"] = median_mae(y_true, dist)
@@ -188,7 +190,7 @@ def generate_results(
     )
 
     grid_y = ordboost_dist.grid_y  # Extracted for NGBoost to match
-    indices = {298960: 0, 340896: 20, 26586: 70, 101: 85, 20: 89}
+    indices = {3984: 0, 162422: 20, 3438: 70, 81: 85, 20: 89}
 
     results = {}
     for model, dist in models.items():
@@ -319,8 +321,12 @@ def generate_experiment_results(
 
     # Extract the data
     pipes[0]._orchestrator.prepare_data()
-    X_test = pipes[0].data_split.X_test
-    y_test = pipes[0].data_split.y_test.to_numpy().squeeze()
+    X_test = pipes[0].data_split.X_recal
+    y_recal = pipes[0].data_split.y_recal
+    if X_test is None or y_recal is None:
+        msg = f"{artifacts_dir} has no recalibration split to evaluate on."
+        raise ValueError(msg)
+    y_test = y_recal.to_numpy().squeeze()
     y_train = pipes[0].data_split.y_train.to_numpy().squeeze()
 
     baseline_crps = compute_baseline_crps(y_test, y_train)
@@ -349,7 +355,7 @@ def generate_experiment_results(
         "continuous": "Continuous",
     }
 
-    results = {}
+    results: dict[str, Any] = {}
     if experiment == "n_bins":
         order = N_BINS_EXP_ORDER
     elif experiment == "bin_dist":
@@ -366,6 +372,7 @@ def generate_experiment_results(
             np.round(models[name].median()),
             models[name],
             baseline_crps,
+            np.median(y_train),
         )
         evaluated = load_eval_results(artifacts_dir / f"v{i}")
         evaluated["mae"] = median_mae(y_test, models[name])
