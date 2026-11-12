@@ -416,7 +416,8 @@ def compute_sample_cdfs(
         "cdfs": {daoh: cdf_array}
 
     """
-    cdfs = {"grid_y": grid_y, "cdfs": {}}
+    cdf_by_daoh: dict[int, np.ndarray] = {}
+    cdfs: dict[str, Any] = {"grid_y": grid_y, "cdfs": cdf_by_daoh}
 
     # Extract proper CDF grids
     if isinstance(dist, NGBoostDistAdapter):
@@ -425,7 +426,7 @@ def compute_sample_cdfs(
         cdf_grid = dist.grid_cdf
 
     for index, daoh in indices.items():  # Loop over indices
-        cdfs["cdfs"][daoh] = cdf_grid[index]
+        cdf_by_daoh[daoh] = cdf_grid[index]
     return cdfs
 
 
@@ -720,7 +721,7 @@ def coverage_sharpness_curve(
     draws = bootstrap_statistic(statistic, n_samples, n_boot, seed)
     lower, upper = percentile_interval(draws)
 
-    results = {"coverage_levels": coverage_levels}
+    results: dict[str, Any] = {"coverage_levels": coverage_levels}
     names = ["empirical_coverage", "sharpness", "winkler"]
     for k, name in enumerate(names):
         block = slice(k * n_levels, (k + 1) * n_levels)

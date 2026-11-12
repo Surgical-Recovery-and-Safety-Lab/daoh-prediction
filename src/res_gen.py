@@ -156,7 +156,7 @@ def generate_results(
     # One baseline CRPS, computed once, shared by the CRPSS of every model
     baseline_crps = compute_baseline_crps(y_test, y_train)
 
-    results = {}
+    results: dict[str, Any] = {}
     for model, dist in table_models.items():
         y_true = y_test
         if model == "mord":
@@ -322,7 +322,11 @@ def generate_experiment_results(
     # Extract the data
     pipes[0]._orchestrator.prepare_data()
     X_test = pipes[0].data_split.X_recal
-    y_test = pipes[0].data_split.y_recal.to_numpy().squeeze()
+    y_recal = pipes[0].data_split.y_recal
+    if X_test is None or y_recal is None:
+        msg = f"{artifacts_dir} has no recalibration split to evaluate on."
+        raise ValueError(msg)
+    y_test = y_recal.to_numpy().squeeze()
     y_train = pipes[0].data_split.y_train.to_numpy().squeeze()
 
     baseline_crps = compute_baseline_crps(y_test, y_train)
@@ -351,7 +355,7 @@ def generate_experiment_results(
         "continuous": "Continuous",
     }
 
-    results = {}
+    results: dict[str, Any] = {}
     if experiment == "n_bins":
         order = N_BINS_EXP_ORDER
     elif experiment == "bin_dist":

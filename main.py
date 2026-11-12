@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from typing import Literal
 
+import pandas as pd
 from medpipe import MedpipeClassifier, MedpipeRegressor
 
 from src.constants import THRESHOLDS
@@ -116,8 +117,12 @@ def run_classification(
             config=config_file, base_artifact_dir=src_dir / "artifacts"
         )
         X_train, y_train, _, _, _X_test, _y_test, groups = pipe.prepare_data()
-        y_train = binarise_daoh(y_train, THRESHOLDS[i])  # Binarise the data
-        pipe.fit(X_train, y_train, groups)
+        y_train = pd.DataFrame(  # Binarise the data
+            binarise_daoh(y_train, THRESHOLDS[i]),
+            index=y_train.index,
+            columns=y_train.columns,
+        )
+        pipe.fit(X_train, y_train, groups_train=groups)
 
 
 if __name__ == "__main__":
@@ -217,6 +222,7 @@ if __name__ == "__main__":
 
     else:
         # The experiment command was called
+        run_flag: Literal["run", "results"]
         if args.run:
             run_flag = "run"
         else:
