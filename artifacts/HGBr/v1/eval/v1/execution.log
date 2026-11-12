@@ -1,29 +1,33 @@
-2026-10-28 07:08:58,782 | medpipe.orchestrator | INFO | orchestrator:172 | Initialised MedpipeOrchestrator. Run directory: artifacts/HGBr/v1/eval/v1
-2026-10-28 07:08:58,940 | medpipe.orchestrator | INFO | orchestrator:257 | Reproducibility artifacts saved successfully.
-2026-10-28 07:08:58,941 | medpipe | INFO | pipeline:700 | MedpipeRegressor initialisation complete.
-2026-10-28 07:08:58,980 | medpipe | INFO | pipeline:1283 | Succesfully loaded MedpipeRegressor from artifacts/HGBr/v1
-2026-10-28 07:08:58,981 | medpipe | INFO | pipeline:687 | Initialising MedpipeRegressor end-to-end pipeline.
-2026-10-28 07:08:58,981 | medpipe.orchestrator | INFO | orchestrator:172 | Initialised MedpipeOrchestrator. Run directory: artifacts/mord/v1/eval/v1
-2026-10-28 07:08:59,142 | medpipe.orchestrator | INFO | orchestrator:257 | Reproducibility artifacts saved successfully.
-2026-10-28 07:08:59,142 | medpipe | INFO | pipeline:700 | MedpipeRegressor initialisation complete.
-2026-10-28 07:08:59,145 | medpipe | INFO | pipeline:1283 | Succesfully loaded MedpipeRegressor from artifacts/mord/v1
-2026-10-28 07:08:59,145 | medpipe.orchestrator | INFO | orchestrator:461 | Ingesting data from /pvol/mroe734/data/NZ_data.v2.parquet
-2026-10-28 07:09:01,181 | medpipe.orchestrator | DEBUG | orchestrator:469 | Loaded data shape: (2585589, 95)
-2026-10-28 07:09:01,395 | medpipe.orchestrator | INFO | orchestrator:508 | Filtered dataset from 95 down to 13 required columns.
-2026-10-28 07:09:01,395 | medpipe.orchestrator | DEBUG | orchestrator:512 | Filtered data shape: (2585589, 13)
-2026-10-28 07:09:01,815 | medpipe.orchestrator | INFO | orchestrator:358 | Data successfully split into Train (2,238,312), and Test (347,277) sets.
-2026-10-28 07:09:01,815 | medpipe.orchestrator | DEBUG | orchestrator:362 | Train set initial shape: (2238312, 12)
-2026-10-28 07:09:01,815 | medpipe.orchestrator | DEBUG | orchestrator:363 | Test set initial shape: (347277, 12)
-2026-10-28 07:09:01,906 | medpipe.orchestrator | INFO | orchestrator:391 | Removed ['OP_YEAR'] from data.
-2026-10-28 07:09:01,906 | medpipe.orchestrator | DEBUG | orchestrator:394 | Train set final shape: (2238312, 11)
-2026-10-28 07:09:01,906 | medpipe.orchestrator | DEBUG | orchestrator:395 | Test set final shape: (347277, 11)
-2026-10-28 07:09:01,948 | medpipe.orchestrator | INFO | orchestrator:461 | Ingesting data from /pvol/mroe734/data/NZ_data.v2.parquet
-2026-10-28 07:09:03,914 | medpipe.orchestrator | DEBUG | orchestrator:469 | Loaded data shape: (2585589, 95)
-2026-10-28 07:09:04,111 | medpipe.orchestrator | INFO | orchestrator:508 | Filtered dataset from 95 down to 13 required columns.
-2026-10-28 07:09:04,111 | medpipe.orchestrator | DEBUG | orchestrator:512 | Filtered data shape: (2585589, 13)
-2026-10-28 07:09:04,501 | medpipe.orchestrator | INFO | orchestrator:358 | Data successfully split into Train (2,238,312), and Test (347,277) sets.
-2026-10-28 07:09:04,501 | medpipe.orchestrator | DEBUG | orchestrator:362 | Train set initial shape: (2238312, 12)
-2026-10-28 07:09:04,501 | medpipe.orchestrator | DEBUG | orchestrator:363 | Test set initial shape: (347277, 12)
-2026-10-28 07:09:04,594 | medpipe.orchestrator | INFO | orchestrator:391 | Removed ['OP_YEAR'] from data.
-2026-10-28 07:09:04,595 | medpipe.orchestrator | DEBUG | orchestrator:394 | Train set final shape: (2238312, 11)
-2026-10-28 07:09:04,595 | medpipe.orchestrator | DEBUG | orchestrator:395 | Test set final shape: (347277, 11)
+2026-11-12 17:18:15,014 | medpipe.orchestrator | INFO | orchestrator:172 | Initialised MedpipeOrchestrator. Run directory: artifacts/HGBr/v1/eval/v1
+2026-11-12 17:18:15,156 | medpipe.orchestrator | INFO | orchestrator:257 | Reproducibility artifacts saved successfully.
+2026-11-12 17:18:15,156 | medpipe | INFO | pipeline:700 | MedpipeRegressor initialisation complete.
+2026-11-12 17:18:15,196 | medpipe | INFO | pipeline:1283 | Successfully loaded MedpipeRegressor from artifacts/HGBr/v1
+2026-11-12 17:18:15,196 | medpipe | INFO | pipeline:687 | Initialising MedpipeRegressor end-to-end pipeline.
+2026-11-12 17:18:15,197 | medpipe.orchestrator | INFO | orchestrator:172 | Initialised MedpipeOrchestrator. Run directory: artifacts/mord/v1/eval/v1
+2026-11-12 17:18:15,339 | medpipe.orchestrator | INFO | orchestrator:257 | Reproducibility artifacts saved successfully.
+2026-11-12 17:18:15,339 | medpipe | INFO | pipeline:700 | MedpipeRegressor initialisation complete.
+2026-11-12 17:18:15,342 | medpipe | INFO | pipeline:1283 | Successfully loaded MedpipeRegressor from artifacts/mord/v1
+2026-11-12 17:18:15,342 | medpipe.orchestrator | INFO | orchestrator:461 | Ingesting data from /pvol/mroe734/data/NZ_data.v2.1.pq
+2026-11-12 17:18:17,480 | medpipe.orchestrator | DEBUG | orchestrator:469 | Loaded data shape: (2585586, 100)
+2026-11-12 17:18:17,665 | medpipe.orchestrator | INFO | orchestrator:508 | Filtered dataset from 100 down to 13 required columns.
+2026-11-12 17:18:17,665 | medpipe.orchestrator | DEBUG | orchestrator:512 | Filtered data shape: (2585586, 13)
+2026-11-12 17:18:18,187 | medpipe.orchestrator | INFO | orchestrator:343 | Data successfully split into Train (2,239,441), Test (168,750), and Recalibration (177,395) sets.
+2026-11-12 17:18:18,187 | medpipe.orchestrator | DEBUG | orchestrator:348 | Train set initial shape: (2239441, 12)
+2026-11-12 17:18:18,187 | medpipe.orchestrator | DEBUG | orchestrator:349 | Test set initial shape: (168750, 12)
+2026-11-12 17:18:18,187 | medpipe.orchestrator | DEBUG | orchestrator:350 | Recalibration set initial shape: (177395, 12)
+2026-11-12 17:18:18,285 | medpipe.orchestrator | INFO | orchestrator:391 | Removed ['OP_YEAR'] from data.
+2026-11-12 17:18:18,285 | medpipe.orchestrator | DEBUG | orchestrator:394 | Train set final shape: (2239441, 11)
+2026-11-12 17:18:18,285 | medpipe.orchestrator | DEBUG | orchestrator:395 | Test set final shape: (168750, 11)
+2026-11-12 17:18:18,285 | medpipe.orchestrator | DEBUG | orchestrator:397 | Recalibration set final shape: (177395, 11)
+2026-11-12 17:18:18,325 | medpipe.orchestrator | INFO | orchestrator:461 | Ingesting data from /pvol/mroe734/data/NZ_data.v2.1.pq
+2026-11-12 17:18:20,135 | medpipe.orchestrator | DEBUG | orchestrator:469 | Loaded data shape: (2585586, 100)
+2026-11-12 17:18:20,296 | medpipe.orchestrator | INFO | orchestrator:508 | Filtered dataset from 100 down to 13 required columns.
+2026-11-12 17:18:20,296 | medpipe.orchestrator | DEBUG | orchestrator:512 | Filtered data shape: (2585586, 13)
+2026-11-12 17:18:20,813 | medpipe.orchestrator | INFO | orchestrator:343 | Data successfully split into Train (2,239,441), Test (168,750), and Recalibration (177,395) sets.
+2026-11-12 17:18:20,813 | medpipe.orchestrator | DEBUG | orchestrator:348 | Train set initial shape: (2239441, 12)
+2026-11-12 17:18:20,814 | medpipe.orchestrator | DEBUG | orchestrator:349 | Test set initial shape: (168750, 12)
+2026-11-12 17:18:20,814 | medpipe.orchestrator | DEBUG | orchestrator:350 | Recalibration set initial shape: (177395, 12)
+2026-11-12 17:18:20,928 | medpipe.orchestrator | INFO | orchestrator:391 | Removed ['OP_YEAR'] from data.
+2026-11-12 17:18:20,928 | medpipe.orchestrator | DEBUG | orchestrator:394 | Train set final shape: (2239441, 11)
+2026-11-12 17:18:20,928 | medpipe.orchestrator | DEBUG | orchestrator:395 | Test set final shape: (168750, 11)
+2026-11-12 17:18:20,928 | medpipe.orchestrator | DEBUG | orchestrator:397 | Recalibration set final shape: (177395, 11)

@@ -2,7 +2,7 @@
 \toprule
 \textbf{Metrics} & \textbf{HGBregressor} & \textbf{OrdinalRidge} & \textbf{NGBoost} & \textbf{OrdBoost} \\
 \midrule
-MAE (days) & $3.43 \pm 0.03$ & $5.20 \pm 0.02$ & $4.17 \pm 0.02$ & $3.80 \pm 0.02$ \\
-CRPS (days) & $3.43 \pm 0.03$ & $5.20 \pm 0.02$ & $4.17 \pm 0.02$ & $2.63 \pm 0.02$ \\
+MAE (days) & $3.65 \pm 0.02$ & $5.43 \pm 0.02$ & $4.43 \pm 0.01$ & $3.70 \pm 0.02$ \\
+CRPS (days) & $3.65 \pm 0.02$ & $5.43 \pm 0.02$ & $3.47 \pm 0.01$ & $2.79 \pm 0.01$ \\
 \bottomrule
 \end{tabular}

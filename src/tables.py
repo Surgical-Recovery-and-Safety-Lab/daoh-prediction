@@ -4,8 +4,6 @@ import tomllib
 from pathlib import Path
 from typing import Literal
 
-from medpipe import MedpipeRegressor
-
 from src.constants import BIN_DIST_EXP_ORDER, MAPPERS_EXP_ORDER, N_BINS_EXP_ORDER
 from src.helpers import (
     bin_intervals,
@@ -14,6 +12,8 @@ from src.helpers import (
     load_cv_summary,
     save_table,
 )
+
+from medpipe import MedpipeRegressor
 
 
 def generate_cv_table(
@@ -361,39 +361,41 @@ def generate_data_table(pipe: MedpipeRegressor) -> None:
 
     """
     X_test = pipe.data_split.X_test
+    X_recal = pipe.data_split.X_recal
     X_train = pipe.data_split.X_train
 
     category_orders = {
         "TRAUMA": X_test["TRAUMA"].unique(),
         "PRIOR_CANCER": X_test["PRIOR_CANCER"].unique(),
-        "SEX": X_test["SEX"].unique(),
-        "ETHNICITY": X_test["ETHNICITY"].unique(),
+        "SEX_ORIGINAL": X_test["SEX_ORIGINAL"].unique(),
+        "ETHNICITY_ORIGINAL": X_test["ETHNICITY_ORIGINAL"].unique(),
     }
 
     latex_table = generate_patient_characteristics_table(
         X_train,
+        X_recal,
         X_test,
         continuous_features=["AGE"],
         categorical_features=[
-            "SEX",
-            "ETHNICITY",
+            "SEX_ORIGINAL",
+            "ETHNICITY_ORIGINAL",
             "ADMISSION_SOURCE",
             "ADMISSION_ACUITY",
             "CATEGORY_LEVEL_1",
             "CATEGORY_LEVEL_2",
             "TRAUMA",
             "PRIOR_CANCER",
-            "ASA",
+            "ASA_ORIGINAL",
             "OP_SEVERITY",
         ],
         feature_labels={
-            "ASA": "ASA score",
+            "ASA_ORIGINAL": "ASA score",
             "OP_SEVERITY": "Operation severity",
-            "ETHNICITY": "Ethnicity",
+            "ETHNICITY_ORIGINAL": "Ethnicity",
             "ADMISSION_SOURCE": "Admission source",
             "ADMISSION_ACUITY": "Admission acuity",
             "TRAUMA": "Trauma",
-            "SEX": "Sex at birth",
+            "SEX_ORIGINAL": "Sex at birth",
             "PRIOR_CANCER": "Prior cancer",
             "CATEGORY_LEVEL_1": "Specialty",
             "CATEGORY_LEVEL_2": "Sub-specialty",

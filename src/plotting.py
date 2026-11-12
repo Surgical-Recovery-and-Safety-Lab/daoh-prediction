@@ -128,8 +128,8 @@ def plot_binned_vs_continuous(
     axes[0].legend(frameon=False)
     axes[1].legend(frameon=False)
 
-    axes[0].set_ylim(bottom=10.5)
-    axes[1].set_ylim(bottom=10.5)
+    axes[0].set_ylim(bottom=1)
+    axes[1].set_ylim(bottom=1)
 
     axes[0].spines["top"].set_visible(False)
     axes[0].spines["right"].set_visible(False)
@@ -196,7 +196,7 @@ def plot_predicted_distribution(
     ax.set_xlabel(r"$\mathbf{DAOH_{90}}$ (days)", fontweight="bold")
     ax.set_ylabel("Count", fontweight="bold")
     ax.legend(frameon=False)
-    ax.set_ylim(bottom=10.5)
+    ax.set_ylim(bottom=1)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
