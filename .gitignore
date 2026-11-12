@@ -9,3 +9,5 @@ artifacts/HGBr/v*/models
 experiments/n_bins/artifacts/v*/models
 experiments/bin_dist/artifacts/v*/models
 experiments/mappers/artifacts/v*/models
+
+*.egg-info/
