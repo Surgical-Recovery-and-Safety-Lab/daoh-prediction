@@ -10,23 +10,76 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
-from medpipe import MedpipeRegressor
+from medpipe import MedpipeRegressor, MetricRegistry, MetricSpec, ModelRegistry
 from medpipe.metrics import ici_score
+from mord import OrdinalRidge
 from numpy.typing import ArrayLike
 from ordboost.distributions import ContinuousPredictiveDistribution
 from ordboost.mappers import BaseBinMapper
 from ordboost.metrics import baseline_distribution, pit_diagnostics
 from scores.probability import PitFcstAtObs, crps_cdf
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import mean_absolute_error, roc_auc_score
 
 from src.bootstrap import bootstrap_statistic, percentile_interval
 from src.constants import BOOTSTRAP_SEED, N_BOOT
 from src.helpers_ngboost import (
     NGBoostDistAdapter,
     cdf_grid_ngboost,
+    crps_ngboost_per_sample,
     crps_ngboost_samples,
+    crps_ngboost_score,
     pit_diagnostics_ngboost,
 )
+
+
+def mae_median(y_true: ArrayLike, dist: ContinuousPredictiveDistribution) -> float:
+    """Compute the mean absolute error using the predicted medians.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        True target values.
+    dist : PredictiveDistribution
+        Predicted distribution from `OrdBoostRegressor.pred_dist`.
+
+    Returns
+    -------
+    float
+        Mean absolute error.
+
+    """
+    return float(mean_absolute_error(y_true, dist.median()))
+
+
+def medpipe_register_updates() -> None:
+    """Updates the MedPipe metric and model registries.
+
+    The OrdinalRidge model is added to the model registry and
+    the mae_median and crps_ngboost metrics are added to the
+    metric registry.
+
+    """
+
+    ModelRegistry.register(name="OrdinalRidge")(OrdinalRidge)
+
+    MetricRegistry.register_spec(
+        MetricSpec(
+            name="crps_ngboost",
+            func=crps_ngboost_score,
+            response_method="predict_dist",
+            display_name="CRPS (NGBoost)",
+            per_sample_func=crps_ngboost_per_sample,
+        )
+    )
+
+    MetricRegistry.register_spec(
+        MetricSpec(
+            name="mae_median",
+            func=mae_median,
+            response_method="predict_dist",
+            display_name="MAE",
+        )
+    )
 
 
 def wrap_ngboost_pred_dist(ngb_pred_dist: Any) -> NGBoostDistAdapter:
