@@ -76,7 +76,7 @@
             "metrics": {
                 "metrics": [
                     "crps",
-                    "mae"
+                    "mae_median"
                 ],
                 "n_bootstraps": 1000,
                 "ci_level": 0.95

@@ -2,7 +2,7 @@
 \toprule
 \textbf{Metrics} & \textbf{Mean} & \textbf{Median} & \textbf{Uniform} & \textbf{Continuous} & \textbf{Quantile} \\
 \midrule
-MAE (days) & $4.10 \pm 0.01$ & $4.09 \pm 0.01$ & $4.14 \pm 0.01$ & $4.07 \pm 0.01$ & $4.07 \pm 0.01$ \\
+MAE (days) & $3.71 \pm 0.02$ & $3.71 \pm 0.02$ & $3.71 \pm 0.02$ & $3.71 \pm 0.02$ & $3.71 \pm 0.02$ \\
 CRPS (days) & $2.80 \pm 0.01$ & $2.80 \pm 0.01$ & $2.80 \pm 0.01$ & $2.80 \pm 0.01$ & $2.80 \pm 0.01$ \\
 \bottomrule
 \end{tabular}

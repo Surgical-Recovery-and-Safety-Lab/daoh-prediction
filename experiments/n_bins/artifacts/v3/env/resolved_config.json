@@ -75,7 +75,7 @@
         "evaluation": {
             "metrics": {
                 "metrics": [
-                    "mae",
+                    "mae_median",
                     "crps"
                 ],
                 "n_bootstraps": 1000,

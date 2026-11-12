@@ -1,15 +1,15 @@
 {
     "outcome": "DAOH_90",
     "overall": {
-        "mae": {
-            "point_estimate": 5.076924351133038,
-            "ci_lower": 5.035344879330057,
-            "ci_upper": 5.122954585929933
+        "mae_median": {
+            "point_estimate": 4.213956508064567,
+            "ci_lower": 4.17039664883924,
+            "ci_upper": 4.265065898138427
         },
         "crps": {
-            "point_estimate": 3.1684758228396364,
-            "ci_lower": 3.133816742240284,
-            "ci_upper": 3.2028119531541286
+            "point_estimate": 3.168195514338645,
+            "ci_lower": 3.135602578241851,
+            "ci_upper": 3.2035402252086898
         }
     }
 }
